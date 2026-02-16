@@ -6,6 +6,7 @@ import { Container } from '@/components/ui/Container';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { DealsTable } from '@/components/features/DealsTable';
 import { tools, reviewEvidence, deals, getReviewsByToolId, getDealsByToolId } from '@/lib/data/mockData';
 
 export async function generateStaticParams() {
@@ -188,58 +189,7 @@ export default function ToolDetailPage({ params }: { params: { id: string } }) {
                 No deals found for this tool yet.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left">
-                      <th className="pb-3 pr-6 text-sm font-semibold text-gray-700">Offer</th>
-                      <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden md:table-cell">
-                        Code
-                      </th>
-                      <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden lg:table-cell">
-                        Last seen
-                      </th>
-                      <th className="pb-3 pl-4 text-sm font-semibold text-gray-700">Receipt</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {toolDeals.map((deal) => (
-                      <tr key={deal.deal_id} className="border-b border-gray-100">
-                        <td className="py-4 pr-6 text-sm text-gray-900">{deal.offer_text}</td>
-                        <td className="py-4 px-4 hidden md:table-cell">
-                          {deal.code ? (
-                            <Badge variant="neutral" size="sm">{deal.code}</Badge>
-                          ) : (
-                            <span className="text-sm text-gray-400">No code</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-600 hidden lg:table-cell">
-                          {new Date(deal.last_seen_date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td className="py-4 pl-4">
-                          <div className="flex items-center gap-4">
-                            <a
-                              href={deal.receipt_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                            >
-                              {deal.timestamp} <ExternalLink size={14} />
-                            </a>
-                            <button className="text-sm text-gray-500 hover:text-gray-700">
-                              Report
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DealsTable deals={toolDeals} />
             )}
           </TabsContent>
         </Tabs>

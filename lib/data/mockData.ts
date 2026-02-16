@@ -5,7 +5,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'opus-clip',
     name: 'OpusClip',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=100&h=100&fit=crop',
     website_url: 'https://opusclip.com',
     registration_url: 'https://opusclip.com/signup',
     short_tagline: 'AI-powered video repurposing for short-form content',
@@ -18,7 +18,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'heygen',
     name: 'HeyGen',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1535378620166-273708d44e4c?w=100&h=100&fit=crop',
     website_url: 'https://heygen.com',
     short_tagline: 'AI avatars and video generation platform',
     categories: ['UGC Avatars', 'Video Gen/B-roll'],
@@ -30,7 +30,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'descript',
     name: 'Descript',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1598908314077-8ac7bb123c3c?w=100&h=100&fit=crop',
     website_url: 'https://descript.com',
     short_tagline: 'All-in-one video and audio editing',
     categories: ['Repurposing', 'Captions', 'Dubbing/Voice'],
@@ -42,7 +42,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'capcut',
     name: 'CapCut',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1579547944212-c4f4d8d0c5c3?w=100&h=100&fit=crop',
     website_url: 'https://capcut.com',
     short_tagline: 'Free video editing with AI features',
     categories: ['Repurposing', 'Captions'],
@@ -54,7 +54,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'elevenlabs',
     name: 'ElevenLabs',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1589254065878-42c9da997008?w=100&h=100&fit=crop',
     website_url: 'https://elevenlabs.io',
     short_tagline: 'AI voice generation and dubbing',
     categories: ['Dubbing/Voice'],
@@ -66,7 +66,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'submagic',
     name: 'Submagic',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=100&h=100&fit=crop',
     website_url: 'https://submagic.co',
     short_tagline: 'AI captions and subtitles for videos',
     categories: ['Captions'],
@@ -78,7 +78,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'invideo-ai',
     name: 'InVideo AI',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=100&h=100&fit=crop',
     website_url: 'https://invideo.io',
     short_tagline: 'Create videos from text prompts',
     categories: ['Video Gen/B-roll', 'Scripts/Hooks'],
@@ -90,7 +90,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'runway',
     name: 'Runway',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1551817958-d9d86fb29431?w=100&h=100&fit=crop',
     website_url: 'https://runwayml.com',
     short_tagline: 'Advanced AI video generation and editing',
     categories: ['Video Gen/B-roll'],
@@ -102,7 +102,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'pictory',
     name: 'Pictory',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1533134486753-c833f0ed4866?w=100&h=100&fit=crop',
     website_url: 'https://pictory.ai',
     short_tagline: 'Transform scripts into videos',
     categories: ['Video Gen/B-roll', 'Scripts/Hooks'],
@@ -114,7 +114,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'synthesia',
     name: 'Synthesia',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1571171637578-41bc2dd41cd2?w=100&h=100&fit=crop',
     website_url: 'https://synthesia.io',
     short_tagline: 'AI video creation with avatars',
     categories: ['UGC Avatars', 'Video Gen/B-roll'],
@@ -126,7 +126,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'veed',
     name: 'VEED',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=100&h=100&fit=crop',
     website_url: 'https://veed.io',
     short_tagline: 'Online video editing made simple',
     categories: ['Repurposing', 'Captions'],
@@ -138,7 +138,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'vidyo',
     name: 'Vidyo.ai',
-    logo_url: 'https://placehold.co/100x100/2563eb/white',
+    logo_url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=100&h=100&fit=crop',
     website_url: 'https://vidyo.ai',
     short_tagline: 'Repurpose long videos into shorts',
     categories: ['Repurposing'],
