@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
 import { tools, deals, categories, getDealsByToolId } from '@/lib/data/mockData';
+import type { CategoryInfo } from '@/lib/types';
 
 export default function HomePage() {
   const previewTools = tools.slice(0, 8);
@@ -222,7 +223,7 @@ export default function HomePage() {
         <section className="py-12 border-t border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Categories</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category) => (
+            {(categories as unknown as CategoryInfo[]).map((category) => (
               <div
                 key={category.slug}
                 className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors"
