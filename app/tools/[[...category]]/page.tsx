@@ -4,20 +4,24 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { Search, ChevronDown, ArrowUpDown, Check as CheckIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
-import { tools, getDealsByToolId, categories, getCategorySlug } from '@/lib/data/mockData';
+import { tools, getDealsByToolId, getReviewsByToolId, categories, getCategorySlug, getCategoryFromSlug } from '@/lib/data/mockData';
 import type { Category } from '@/lib/types';
 
-type SortField = 'name' | 'evidence' | 'last_seen' | 'pricing';
+type SortField = 'name' | 'reviews' | 'last_seen' | 'pricing';
 type SortDirection = 'asc' | 'desc';
 
-export default function ToolsPage() {
+export default function ToolsPage({ params }: { params: { category?: string[] } }) {
   const router = useRouter();
+  const categorySlug = params.category?.[0];
+  const activeCategory = categorySlug ? getCategoryFromSlug(categorySlug) : undefined;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPricing, setSelectedPricing] = useState<string>('all');
-  const [sortField, setSortField] = useState<SortField>('evidence');
+  const [hasDealsOnly, setHasDealsOnly] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('reviews');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const pricingOptions = useMemo(() => {
@@ -27,6 +31,11 @@ export default function ToolsPage() {
 
   const filteredAndSortedTools = useMemo(() => {
     let result = [...tools];
+
+    // Category filter (from URL)
+    if (activeCategory) {
+      result = result.filter((t) => t.categories.includes(activeCategory));
+    }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -42,14 +51,18 @@ export default function ToolsPage() {
       result = result.filter((t) => t.pricing_model === selectedPricing);
     }
 
+    if (hasDealsOnly) {
+      result = result.filter((t) => getDealsByToolId(t.tool_id).length > 0);
+    }
+
     result.sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
         case 'name':
           cmp = a.name.localeCompare(b.name);
           break;
-        case 'evidence':
-          cmp = (a.review_sources_count || 0) - (b.review_sources_count || 0);
+        case 'reviews':
+          cmp = getReviewsByToolId(a.tool_id).length - getReviewsByToolId(b.tool_id).length;
           break;
         case 'last_seen':
           cmp = (a.last_seen_review_date || '').localeCompare(b.last_seen_review_date || '');
@@ -62,10 +75,12 @@ export default function ToolsPage() {
     });
 
     return result;
-  }, [searchQuery, selectedPricing, sortField, sortDirection]);
+  }, [searchQuery, selectedPricing, hasDealsOnly, sortField, sortDirection, activeCategory]);
 
   function handleCategoryChange(value: string) {
-    if (value !== 'all') {
+    if (value === 'all') {
+      router.push('/tools');
+    } else {
       const slug = getCategorySlug(value as Category);
       router.push(`/tools/${slug}`);
     }
@@ -85,11 +100,16 @@ export default function ToolsPage() {
     return <ArrowUpDown size={14} className="text-blue-600" />;
   }
 
+  const pageTitle = activeCategory ? `${activeCategory} Tools` : 'All Tools';
+  const totalCount = activeCategory
+    ? tools.filter((t) => t.categories.includes(activeCategory)).length
+    : tools.length;
+
   return (
     <div className="min-h-screen bg-white">
       <Container>
         <div className="py-12">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">All Tools</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle}</h1>
 
           {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -106,7 +126,7 @@ export default function ToolsPage() {
 
             <div className="relative">
               <select
-                value="all"
+                value={activeCategory || 'all'}
                 onChange={(e) => handleCategoryChange(e.target.value)}
                 className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
@@ -135,10 +155,23 @@ export default function ToolsPage() {
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
+
+            <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded bg-white cursor-pointer select-none hover:bg-gray-50 transition-colors">
+              <span className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${hasDealsOnly ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
+                {hasDealsOnly && <CheckIcon size={12} className="text-white" />}
+              </span>
+              <input
+                type="checkbox"
+                checked={hasDealsOnly}
+                onChange={(e) => setHasDealsOnly(e.target.checked)}
+                className="sr-only"
+              />
+              Has deals
+            </label>
           </div>
 
           <div className="mb-4 text-sm text-gray-600">
-            Showing {filteredAndSortedTools.length} of {tools.length} tools
+            Showing {filteredAndSortedTools.length} of {totalCount} tools
           </div>
 
           <div className="overflow-x-auto">
@@ -164,12 +197,13 @@ export default function ToolsPage() {
                       Pricing <SortIcon field="pricing" />
                     </button>
                   </th>
-                  <th className="pb-3 px-4 hidden lg:table-cell">
+                  <th className="pb-3 px-4">
                     <button
-                      onClick={() => handleSort('evidence')}
+                      onClick={() => handleSort('reviews')}
                       className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
                     >
-                      Evidence <SortIcon field="evidence" />
+                      Reviews
+                      <SortIcon field="reviews" />
                     </button>
                   </th>
                   <th className="pb-3 px-4 hidden lg:table-cell">
@@ -180,7 +214,7 @@ export default function ToolsPage() {
                       Last seen <SortIcon field="last_seen" />
                     </button>
                   </th>
-                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">
+                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700">
                     Deals
                   </th>
                 </tr>
@@ -195,6 +229,7 @@ export default function ToolsPage() {
                 ) : (
                   filteredAndSortedTools.map((tool) => {
                     const toolDeals = getDealsByToolId(tool.tool_id);
+                    const toolReviews = getReviewsByToolId(tool.tool_id);
                     const hasDeals = toolDeals.length > 0;
 
                     return (
@@ -236,8 +271,8 @@ export default function ToolsPage() {
                         <td className="py-4 px-4 text-sm text-gray-600 hidden sm:table-cell">
                           {tool.pricing_model}
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-600 hidden lg:table-cell">
-                          {tool.review_sources_count || 0} videos
+                        <td className="py-4 px-4 text-sm text-gray-600">
+                          {toolReviews.length}
                         </td>
                         <td className="py-4 px-4 text-sm text-gray-600 hidden lg:table-cell">
                           {tool.last_seen_review_date
@@ -247,11 +282,11 @@ export default function ToolsPage() {
                               })
                             : '-'}
                         </td>
-                        <td className="py-4 pl-4 hidden sm:table-cell">
+                        <td className="py-4 pl-4">
                           {hasDeals ? (
                             <Link href={`/tool/${tool.tool_id}?tab=deals`}>
                               <Badge variant="blue" size="sm" className="cursor-pointer hover:bg-blue-100">
-                                {toolDeals.length} deal{toolDeals.length > 1 ? 's' : ''}
+                                {toolDeals.length}
                               </Badge>
                             </Link>
                           ) : (

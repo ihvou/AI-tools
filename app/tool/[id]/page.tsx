@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -5,9 +6,7 @@ import { ExternalLink } from 'lucide-react';
 import { Container } from '@/components/ui/Container';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
-import { DealsTable } from '@/components/features/DealsTable';
-import { ReviewsSection } from '@/components/features/ReviewsSection';
+import { ToolDetailTabs } from '@/components/features/ToolDetailTabs';
 import { tools, getReviewsByToolId, getDealsByToolId } from '@/lib/data/mockData';
 
 export async function generateStaticParams() {
@@ -62,7 +61,7 @@ export default function ToolDetailPage({ params }: { params: { id: string } }) {
                     </>
                   )}
                   <span>•</span>
-                  <span>{tool.review_sources_count || 0} videos indexed</span>
+                  <span>{reviews.length} reviews</span>
                   {tool.last_seen_review_date && (
                     <>
                       <span>•</span>
@@ -102,38 +101,9 @@ export default function ToolDetailPage({ params }: { params: { id: string } }) {
 
       {/* Tabs */}
       <Container>
-        <Tabs defaultValue="reviews" className="py-8">
-          <TabsList>
-            <TabsTrigger value="reviews">
-              Reviews ({reviews.length})
-            </TabsTrigger>
-            <TabsTrigger value="deals">
-              Deals ({toolDeals.length})
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Reviews Tab */}
-          <TabsContent value="reviews">
-            {reviews.length === 0 ? (
-              <div className="text-center py-12 text-gray-600">
-                No reviews found for this tool yet.
-              </div>
-            ) : (
-              <ReviewsSection reviews={reviews} />
-            )}
-          </TabsContent>
-
-          {/* Deals Tab */}
-          <TabsContent value="deals">
-            {toolDeals.length === 0 ? (
-              <div className="text-center py-12 text-gray-600">
-                No deals found for this tool yet.
-              </div>
-            ) : (
-              <DealsTable deals={toolDeals} />
-            )}
-          </TabsContent>
-        </Tabs>
+        <Suspense fallback={<div className="py-8">Loading...</div>}>
+          <ToolDetailTabs reviews={reviews} deals={toolDeals} />
+        </Suspense>
       </Container>
     </div>
   );

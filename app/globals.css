@@ -16,4 +16,8 @@
   .container-custom {
     @apply max-w-[1200px] mx-auto px-6;
   }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
 }

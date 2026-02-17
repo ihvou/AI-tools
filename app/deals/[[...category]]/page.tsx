@@ -4,22 +4,27 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, ChevronDown, ArrowUpDown, ExternalLink, Copy, Check } from 'lucide-react';
+import { Search, ChevronDown, ArrowUpDown, ExternalLink, Copy, Check, MoreHorizontal, X } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
-import { deals, tools, categories, getCategorySlug } from '@/lib/data/mockData';
-import type { Category } from '@/lib/types';
+import { DealBottomSheet } from '@/components/features/DealBottomSheet';
+import { deals, tools, categories, getCategorySlug, getCategoryFromSlug } from '@/lib/data/mockData';
+import type { Category, Deal } from '@/lib/types';
 
 type SortField = 'tool' | 'offer' | 'last_seen';
 type SortDirection = 'asc' | 'desc';
 
-export default function DealsPage() {
+export default function DealsPage({ params }: { params: { category?: string[] } }) {
   const router = useRouter();
+  const categorySlug = params.category?.[0];
+  const activeCategory = categorySlug ? getCategoryFromSlug(categorySlug) : undefined;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOfferType, setSelectedOfferType] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('last_seen');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [copiedDealId, setCopiedDealId] = useState<string | null>(null);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
   const offerTypeOptions = useMemo(() => {
     const unique = new Set(deals.map((d) => d.offer_type));
@@ -28,6 +33,11 @@ export default function DealsPage() {
 
   const filteredAndSortedDeals = useMemo(() => {
     let result = [...deals];
+
+    // Category filter (from URL)
+    if (activeCategory) {
+      result = result.filter((d) => d.category.includes(activeCategory));
+    }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -65,10 +75,12 @@ export default function DealsPage() {
     });
 
     return result;
-  }, [searchQuery, selectedOfferType, sortField, sortDirection]);
+  }, [searchQuery, selectedOfferType, sortField, sortDirection, activeCategory]);
 
   function handleCategoryChange(value: string) {
-    if (value !== 'all') {
+    if (value === 'all') {
+      router.push('/deals');
+    } else {
       const slug = getCategorySlug(value as Category);
       router.push(`/deals/${slug}`);
     }
@@ -94,11 +106,16 @@ export default function DealsPage() {
     return <ArrowUpDown size={14} className="text-blue-600" />;
   }
 
+  const pageTitle = activeCategory ? `${activeCategory} Deals` : 'All Deals';
+  const totalCount = activeCategory
+    ? deals.filter((d) => d.category.includes(activeCategory)).length
+    : deals.length;
+
   return (
     <div className="min-h-screen bg-white">
       <Container>
         <div className="py-12">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">All Deals</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle}</h1>
 
           {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -115,7 +132,7 @@ export default function DealsPage() {
 
             <div className="relative">
               <select
-                value="all"
+                value={activeCategory || 'all'}
                 onChange={(e) => handleCategoryChange(e.target.value)}
                 className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
@@ -147,7 +164,7 @@ export default function DealsPage() {
           </div>
 
           <div className="mb-4 text-sm text-gray-600">
-            Showing {filteredAndSortedDeals.length} of {deals.length} deals
+            Showing {filteredAndSortedDeals.length} of {totalCount} deals
           </div>
 
           <div className="overflow-x-auto">
@@ -162,7 +179,7 @@ export default function DealsPage() {
                       Tool <SortIcon field="tool" />
                     </button>
                   </th>
-                  <th className="pb-3 px-4">
+                  <th className="pb-3 px-4 hidden sm:table-cell">
                     <button
                       onClick={() => handleSort('offer')}
                       className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
@@ -170,8 +187,8 @@ export default function DealsPage() {
                       Offer <SortIcon field="offer" />
                     </button>
                   </th>
-                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden md:table-cell">Code</th>
-                  <th className="pb-3 px-4 hidden lg:table-cell">
+                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700">Code</th>
+                  <th className="pb-3 px-4 hidden md:table-cell">
                     <button
                       onClick={() => handleSort('last_seen')}
                       className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
@@ -179,14 +196,20 @@ export default function DealsPage() {
                       Last seen <SortIcon field="last_seen" />
                     </button>
                   </th>
-                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">Receipt</th>
-                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">Claim Deal</th>
+                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden md:table-cell">Receipt</th>
+                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700">
+                    Claim
+                  </th>
+                  {/* Mobile ellipsis column */}
+                  <th className="pb-3 pl-2 text-sm font-semibold text-gray-700 sm:hidden w-10">
+                    <span className="sr-only">More</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAndSortedDeals.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-gray-500">
+                    <td colSpan={7} className="py-12 text-center text-gray-500">
                       No deals found matching your filters.
                     </td>
                   </tr>
@@ -214,10 +237,10 @@ export default function DealsPage() {
                             </span>
                           </Link>
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-900">
+                        <td className="py-4 px-4 text-sm text-gray-900 hidden sm:table-cell">
                           {deal.offer_text}
                         </td>
-                        <td className="py-4 px-4 hidden md:table-cell">
+                        <td className="py-4 px-4">
                           {deal.code ? (
                             <button
                               onClick={() => handleCopyCode(deal.deal_id, deal.code!)}
@@ -234,17 +257,17 @@ export default function DealsPage() {
                               )}
                             </button>
                           ) : (
-                            <span className="text-sm text-gray-400">No code</span>
+                            <span className="text-sm text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-600 hidden lg:table-cell">
+                        <td className="py-4 px-4 text-sm text-gray-600 hidden md:table-cell">
                           {new Date(deal.last_seen_date).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
                           })}
                         </td>
-                        <td className="py-4 px-4 hidden sm:table-cell">
+                        <td className="py-4 px-4 hidden md:table-cell">
                           <a
                             href={deal.receipt_url}
                             target="_blank"
@@ -254,18 +277,36 @@ export default function DealsPage() {
                             {deal.timestamp} <ExternalLink size={12} />
                           </a>
                         </td>
-                        <td className="py-4 pl-4 hidden sm:table-cell w-[100px]">
+                        <td className="py-4 pl-4 w-[100px]">
                           <a
                             href={claimDealUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="relative inline-flex items-center justify-center w-[88px] h-8"
+                            className="relative inline-flex items-center justify-center w-[88px] h-8 hidden sm:inline-flex"
                           >
                             <ExternalLink size={16} className="absolute text-gray-400 transition-opacity group-hover/row:opacity-0" />
                             <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded opacity-0 group-hover/row:opacity-100 transition-opacity whitespace-nowrap">
                               Claim Deal
                             </span>
                           </a>
+                          {/* Mobile: just the icon */}
+                          <a
+                            href={claimDealUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="sm:hidden inline-flex items-center justify-center w-8 h-8"
+                          >
+                            <ExternalLink size={16} className="text-blue-600" />
+                          </a>
+                        </td>
+                        {/* Mobile ellipsis */}
+                        <td className="py-4 pl-2 sm:hidden">
+                          <button
+                            onClick={() => setSelectedDeal(deal)}
+                            className="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -276,6 +317,15 @@ export default function DealsPage() {
           </div>
         </div>
       </Container>
+
+      {/* Mobile Bottom Sheet */}
+      {selectedDeal && (
+        <DealBottomSheet
+          deal={selectedDeal}
+          tool={tools.find((t) => t.tool_id === selectedDeal.tool_id)!}
+          onClose={() => setSelectedDeal(null)}
+        />
+      )}
     </div>
   );
 }

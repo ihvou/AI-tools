@@ -4,7 +4,8 @@ import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
-import { tools, deals, categories, getDealsByToolId, getToolsByCategory, getDealsByCategory, getCategorySlug } from '@/lib/data/mockData';
+import { DealsPreviewTable } from '@/components/features/DealsPreviewTable';
+import { tools, deals, categories, getDealsByToolId, getReviewsByToolId, getToolsByCategory, getDealsByCategory, getCategorySlug } from '@/lib/data/mockData';
 
 export default function HomePage() {
   const previewTools = tools.slice(0, 8);
@@ -63,10 +64,10 @@ export default function HomePage() {
                   <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">
                     Pricing
                   </th>
-                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden lg:table-cell">
-                    Evidence
+                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700">
+                    Reviews
                   </th>
-                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">
+                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700">
                     Deals
                   </th>
                 </tr>
@@ -74,6 +75,7 @@ export default function HomePage() {
               <tbody>
                 {previewTools.map((tool) => {
                   const toolDeals = getDealsByToolId(tool.tool_id);
+                  const toolReviews = getReviewsByToolId(tool.tool_id);
                   const hasDeals = toolDeals.length > 0;
 
                   return (
@@ -115,14 +117,14 @@ export default function HomePage() {
                       <td className="py-4 px-4 text-sm text-gray-600 hidden sm:table-cell">
                         {tool.pricing_model}
                       </td>
-                      <td className="py-4 px-4 text-sm text-gray-600 hidden lg:table-cell">
-                        {tool.review_sources_count || 0} videos
+                      <td className="py-4 px-4 text-sm text-gray-600">
+                        {toolReviews.length}
                       </td>
-                      <td className="py-4 pl-4 hidden sm:table-cell">
+                      <td className="py-4 pl-4">
                         {hasDeals ? (
                           <Link href={`/tool/${tool.tool_id}?tab=deals`}>
                             <Badge variant="blue" size="sm" className="cursor-pointer hover:bg-blue-100">
-                              {toolDeals.length} deal{toolDeals.length > 1 ? 's' : ''}
+                              {toolDeals.length}
                             </Badge>
                           </Link>
                         ) : (
@@ -150,72 +152,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="pb-3 pr-6 text-sm font-semibold text-gray-700">Tool</th>
-                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700">Offer</th>
-                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden md:table-cell">Code</th>
-                  <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden lg:table-cell">Last seen</th>
-                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">Receipt</th>
-                </tr>
-              </thead>
-              <tbody>
-                {previewDeals.map((deal) => {
-                  const tool = tools.find((t) => t.tool_id === deal.tool_id);
-                  if (!tool) return null;
-
-                  return (
-                    <tr key={deal.deal_id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 pr-6">
-                        <Link href={`/tool/${tool.tool_id}?tab=deals`} className="flex items-center gap-3 group">
-                          <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0 relative overflow-hidden">
-                            <Image
-                              src={tool.logo_url}
-                              alt={tool.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <span className="font-medium text-gray-900 group-hover:text-blue-600">
-                            {tool.name}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-900">
-                        {deal.offer_text}
-                      </td>
-                      <td className="py-4 px-4 hidden md:table-cell">
-                        {deal.code ? (
-                          <Badge variant="neutral" size="sm">{deal.code}</Badge>
-                        ) : (
-                          <span className="text-sm text-gray-400">No code</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-600 hidden lg:table-cell">
-                        {new Date(deal.last_seen_date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td className="py-4 pl-4 hidden sm:table-cell">
-                        <a
-                          href={deal.receipt_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:text-blue-700"
-                        >
-                          {deal.timestamp} ↗
-                        </a>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DealsPreviewTable deals={previewDeals} />
         </section>
 
         {/* Categories */}
