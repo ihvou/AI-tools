@@ -1,20 +1,21 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Search, ChevronDown, ArrowUpDown, ExternalLink, Copy, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
-import { deals, tools, categories } from '@/lib/data/mockData';
+import { deals, tools, categories, getCategorySlug } from '@/lib/data/mockData';
 import type { Category } from '@/lib/types';
 
 type SortField = 'tool' | 'offer' | 'last_seen';
 type SortDirection = 'asc' | 'desc';
 
 export default function DealsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedOfferType, setSelectedOfferType] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('last_seen');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -28,7 +29,6 @@ export default function DealsPage() {
   const filteredAndSortedDeals = useMemo(() => {
     let result = [...deals];
 
-    // Search filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter((d) => {
@@ -41,17 +41,10 @@ export default function DealsPage() {
       });
     }
 
-    // Category filter
-    if (selectedCategory !== 'all') {
-      result = result.filter((d) => d.category.includes(selectedCategory as Category));
-    }
-
-    // Offer type filter
     if (selectedOfferType !== 'all') {
       result = result.filter((d) => d.offer_type === selectedOfferType);
     }
 
-    // Sorting
     result.sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
@@ -72,7 +65,14 @@ export default function DealsPage() {
     });
 
     return result;
-  }, [searchQuery, selectedCategory, selectedOfferType, sortField, sortDirection]);
+  }, [searchQuery, selectedOfferType, sortField, sortDirection]);
+
+  function handleCategoryChange(value: string) {
+    if (value !== 'all') {
+      const slug = getCategorySlug(value as Category);
+      router.push(`/deals/${slug}`);
+    }
+  }
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -102,7 +102,6 @@ export default function DealsPage() {
 
           {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            {/* Search */}
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -110,16 +109,15 @@ export default function DealsPage() {
                 placeholder="Search deals..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               />
             </div>
 
-            {/* Category Filter */}
             <div className="relative">
               <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                value="all"
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All categories</option>
                 {categories.map((cat) => (
@@ -131,12 +129,11 @@ export default function DealsPage() {
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
 
-            {/* Offer Type Filter */}
             <div className="relative">
               <select
                 value={selectedOfferType}
                 onChange={(e) => setSelectedOfferType(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All offer types</option>
                 {offerTypeOptions.map((t) => (
@@ -153,7 +150,6 @@ export default function DealsPage() {
             Showing {filteredAndSortedDeals.length} of {deals.length} deals
           </div>
 
-          {/* Deals Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -184,7 +180,7 @@ export default function DealsPage() {
                     </button>
                   </th>
                   <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">Receipt</th>
-                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700 w-10"></th>
+                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700 hidden sm:table-cell">Claim Deal</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,7 +195,7 @@ export default function DealsPage() {
                     const tool = tools.find((t) => t.tool_id === deal.tool_id);
                     if (!tool) return null;
 
-                    const getDealUrl = deal.link_url || deal.receipt_url;
+                    const claimDealUrl = deal.link_url || deal.receipt_url;
 
                     return (
                       <tr key={deal.deal_id} className="border-b border-gray-100 hover:bg-gray-50 group/row">
@@ -258,16 +254,16 @@ export default function DealsPage() {
                             {deal.timestamp} <ExternalLink size={12} />
                           </a>
                         </td>
-                        <td className="py-4 pl-4">
+                        <td className="py-4 pl-4 hidden sm:table-cell w-[100px]">
                           <a
-                            href={getDealUrl}
+                            href={claimDealUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center w-8 h-8 rounded text-gray-400 hover:text-blue-600 group-hover/row:opacity-100 transition-all"
+                            className="relative inline-flex items-center justify-center w-[88px] h-8"
                           >
-                            <ExternalLink size={16} className="group-hover/row:hidden" />
-                            <span className="hidden group-hover/row:inline-flex items-center gap-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md whitespace-nowrap transition-colors">
-                              Get Deal
+                            <ExternalLink size={16} className="absolute text-gray-400 transition-opacity group-hover/row:opacity-0" />
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded opacity-0 group-hover/row:opacity-100 transition-opacity whitespace-nowrap">
+                              Claim Deal
                             </span>
                           </a>
                         </td>

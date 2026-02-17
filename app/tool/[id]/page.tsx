@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DealsTable } from '@/components/features/DealsTable';
-import { tools, reviewEvidence, deals, getReviewsByToolId, getDealsByToolId } from '@/lib/data/mockData';
+import { ReviewsSection } from '@/components/features/ReviewsSection';
+import { tools, getReviewsByToolId, getDealsByToolId } from '@/lib/data/mockData';
 
 export async function generateStaticParams() {
   return tools.map((tool) => ({
@@ -33,7 +34,7 @@ export default function ToolDetailPage({ params }: { params: { id: string } }) {
           <div className="py-8 flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             {/* Left: Tool Info */}
             <div className="flex items-start gap-4 flex-1">
-              <div className="w-16 h-16 rounded-lg bg-white border border-gray-200 flex-shrink-0 relative overflow-hidden">
+              <div className="w-16 h-16 rounded bg-white border border-gray-200 flex-shrink-0 relative overflow-hidden">
                 <Image
                   src={tool.logo_url}
                   alt={tool.name}
@@ -118,67 +119,7 @@ export default function ToolDetailPage({ params }: { params: { id: string } }) {
                 No reviews found for this tool yet.
               </div>
             ) : (
-              <div className="space-y-6">
-                {reviews.map((review) => (
-                  <div
-                    key={review.review_id}
-                    className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors"
-                  >
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <Badge
-                        variant={
-                          review.sentiment === 'Pro'
-                            ? 'pro'
-                            : review.sentiment === 'Con'
-                            ? 'con'
-                            : 'neutral'
-                        }
-                        size="sm"
-                      >
-                        {review.sentiment}
-                      </Badge>
-                      {review.tags.map((tag) => (
-                        <Badge key={tag} variant="neutral" size="sm">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    {/* Snippet */}
-                    <p className="text-gray-900 mb-4">{review.snippet_text}</p>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="text-gray-600">
-                        {review.channel_name} •{' '}
-                        {new Date(review.publish_date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <a
-                          href={review.receipt_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                        >
-                          Receipt ({review.timestamp}) <ExternalLink size={14} />
-                        </a>
-                        <button className="text-gray-500 hover:text-gray-700">
-                          Report
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="text-center text-sm text-gray-600 pt-4">
-                  Showing {reviews.length} of {reviews.length} reviews
-                </div>
-              </div>
+              <ReviewsSection reviews={reviews} />
             )}
           </TabsContent>
 

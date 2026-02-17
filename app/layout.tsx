@@ -7,8 +7,8 @@ import { Footer } from '@/components/features/Footer';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'AI Video Ads Hub - Find AI video ad tools and promo offers',
-  description: 'Find AI video ad tools and promo offers backed by YouTube timestamp receipts.',
+  title: 'AI Tools - Reviews and Deals',
+  description: 'Find AI tools reviews and deals backed by YouTube timestamp receipts.',
 };
 
 export default function RootLayout({

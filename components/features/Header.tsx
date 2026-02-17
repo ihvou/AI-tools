@@ -21,8 +21,8 @@ export function Header() {
             <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center flex-shrink-0">
               <span className="text-white text-sm font-bold">AV</span>
             </div>
-            <span className="font-semibold text-lg hidden sm:inline">AI Video Ads Hub</span>
-            <span className="font-semibold text-base sm:hidden">AVAH</span>
+            <span className="font-semibold text-lg hidden sm:inline">AI Tools</span>
+            <span className="font-semibold text-base sm:hidden">AI Tools</span>
           </Link>
 
           {/* Desktop Nav */}

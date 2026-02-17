@@ -4,8 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
-import { tools, deals, categories, getDealsByToolId } from '@/lib/data/mockData';
-import type { CategoryInfo } from '@/lib/types';
+import { tools, deals, categories, getDealsByToolId, getToolsByCategory, getDealsByCategory, getCategorySlug } from '@/lib/data/mockData';
 
 export default function HomePage() {
   const previewTools = tools.slice(0, 8);
@@ -18,7 +17,7 @@ export default function HomePage() {
         <Container>
           <div className="py-12">
             <h1 className="text-3xl font-bold text-gray-900 mb-3">
-              AI Video Ads Hub
+              AI Tools Reviews and Deals
             </h1>
             <p className="text-lg text-gray-600 mb-6 max-w-2xl">
               Find AI video ad tools and promo offers backed by YouTube timestamp receipts.
@@ -122,7 +121,7 @@ export default function HomePage() {
                       <td className="py-4 pl-4 hidden sm:table-cell">
                         {hasDeals ? (
                           <Link href={`/tool/${tool.tool_id}?tab=deals`}>
-                            <Badge variant="blue" size="sm" className="cursor-pointer hover:bg-blue-200">
+                            <Badge variant="blue" size="sm" className="cursor-pointer hover:bg-blue-100">
                               {toolDeals.length} deal{toolDeals.length > 1 ? 's' : ''}
                             </Badge>
                           </Link>
@@ -223,33 +222,39 @@ export default function HomePage() {
         <section className="py-12 border-t border-gray-200">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Categories</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(categories as unknown as CategoryInfo[]).map((category) => (
-              <div
-                key={category.slug}
-                className="border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors"
-              >
-                <h3 className="font-semibold text-gray-900 mb-2">{category.name}</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  {category.tools_count} tools • {category.deals_count} deals
-                </p>
-                <div className="flex flex-col gap-2">
-                  <Link
-                    href={`/tools/category/${category.slug}`}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                  >
-                    Tools in {category.name}
-                    <ChevronRight size={14} />
-                  </Link>
-                  <Link
-                    href={`/deals/category/${category.slug}`}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                  >
-                    Deals in {category.name}
-                    <ChevronRight size={14} />
-                  </Link>
+            {categories.map((category) => {
+              const slug = getCategorySlug(category);
+              const toolCount = getToolsByCategory(category).length;
+              const dealCount = getDealsByCategory(category).length;
+
+              return (
+                <div
+                  key={slug}
+                  className="border border-gray-200 rounded p-6 hover:border-gray-300 transition-colors"
+                >
+                  <h3 className="font-semibold text-gray-900 mb-2">{category}</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    {toolCount} tools • {dealCount} deals
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <Link
+                      href={`/tools/${slug}`}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      Tools in {category}
+                      <ChevronRight size={14} />
+                    </Link>
+                    <Link
+                      href={`/deals/${slug}`}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      Deals in {category}
+                      <ChevronRight size={14} />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </Container>

@@ -1,20 +1,21 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Search, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
-import { tools, getDealsByToolId, categories } from '@/lib/data/mockData';
+import { tools, getDealsByToolId, categories, getCategorySlug } from '@/lib/data/mockData';
 import type { Category } from '@/lib/types';
 
 type SortField = 'name' | 'evidence' | 'last_seen' | 'pricing';
 type SortDirection = 'asc' | 'desc';
 
 export default function ToolsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedPricing, setSelectedPricing] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('evidence');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -27,7 +28,6 @@ export default function ToolsPage() {
   const filteredAndSortedTools = useMemo(() => {
     let result = [...tools];
 
-    // Search filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -38,17 +38,10 @@ export default function ToolsPage() {
       );
     }
 
-    // Category filter
-    if (selectedCategory !== 'all') {
-      result = result.filter((t) => t.categories.includes(selectedCategory as Category));
-    }
-
-    // Pricing filter
     if (selectedPricing !== 'all') {
       result = result.filter((t) => t.pricing_model === selectedPricing);
     }
 
-    // Sorting
     result.sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
@@ -69,7 +62,14 @@ export default function ToolsPage() {
     });
 
     return result;
-  }, [searchQuery, selectedCategory, selectedPricing, sortField, sortDirection]);
+  }, [searchQuery, selectedPricing, sortField, sortDirection]);
+
+  function handleCategoryChange(value: string) {
+    if (value !== 'all') {
+      const slug = getCategorySlug(value as Category);
+      router.push(`/tools/${slug}`);
+    }
+  }
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -82,12 +82,7 @@ export default function ToolsPage() {
 
   function SortIcon({ field }: { field: SortField }) {
     if (sortField !== field) return <ArrowUpDown size={14} className="text-gray-400" />;
-    return (
-      <ArrowUpDown
-        size={14}
-        className="text-blue-600"
-      />
-    );
+    return <ArrowUpDown size={14} className="text-blue-600" />;
   }
 
   return (
@@ -98,7 +93,6 @@ export default function ToolsPage() {
 
           {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            {/* Search */}
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -106,16 +100,15 @@ export default function ToolsPage() {
                 placeholder="Search tools..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               />
             </div>
 
-            {/* Category Filter */}
             <div className="relative">
               <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                value="all"
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All categories</option>
                 {categories.map((cat) => (
@@ -127,12 +120,11 @@ export default function ToolsPage() {
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
 
-            {/* Pricing Filter */}
             <div className="relative">
               <select
                 value={selectedPricing}
                 onChange={(e) => setSelectedPricing(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All pricing</option>
                 {pricingOptions.map((p) => (
@@ -149,7 +141,6 @@ export default function ToolsPage() {
             Showing {filteredAndSortedTools.length} of {tools.length} tools
           </div>
 
-          {/* Tools Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -259,7 +250,7 @@ export default function ToolsPage() {
                         <td className="py-4 pl-4 hidden sm:table-cell">
                           {hasDeals ? (
                             <Link href={`/tool/${tool.tool_id}?tab=deals`}>
-                              <Badge variant="blue" size="sm" className="cursor-pointer hover:bg-blue-200">
+                              <Badge variant="blue" size="sm" className="cursor-pointer hover:bg-blue-100">
                                 {toolDeals.length} deal{toolDeals.length > 1 ? 's' : ''}
                               </Badge>
                             </Link>

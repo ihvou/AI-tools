@@ -31,12 +31,12 @@ export function DealsTable({ deals }: DealsTableProps) {
               Last seen
             </th>
             <th className="pb-3 px-4 text-sm font-semibold text-gray-700">Receipt</th>
-            <th className="pb-3 pl-4 text-sm font-semibold text-gray-700 w-10"></th>
+            <th className="pb-3 pl-4 text-sm font-semibold text-gray-700">Claim Deal</th>
           </tr>
         </thead>
         <tbody>
           {deals.map((deal) => {
-            const getDealUrl = deal.link_url || deal.receipt_url;
+            const claimDealUrl = deal.link_url || deal.receipt_url;
 
             return (
               <tr key={deal.deal_id} className="border-b border-gray-100 group/row hover:bg-gray-50">
@@ -83,16 +83,16 @@ export function DealsTable({ deals }: DealsTableProps) {
                     </button>
                   </div>
                 </td>
-                <td className="py-4 pl-4">
+                <td className="py-4 pl-4 w-[100px]">
                   <a
-                    href={getDealUrl}
+                    href={claimDealUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center w-8 h-8 rounded text-gray-400 hover:text-blue-600 group-hover/row:opacity-100 transition-all"
+                    className="relative inline-flex items-center justify-center w-[88px] h-8"
                   >
-                    <ExternalLink size={16} className="group-hover/row:hidden" />
-                    <span className="hidden group-hover/row:inline-flex items-center gap-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-md whitespace-nowrap transition-colors">
-                      Get Deal
+                    <ExternalLink size={16} className="absolute text-gray-400 transition-opacity group-hover/row:opacity-0" />
+                    <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded opacity-0 group-hover/row:opacity-100 transition-opacity whitespace-nowrap">
+                      Claim Deal
                     </span>
                   </a>
                 </td>

@@ -30,7 +30,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'descript',
     name: 'Descript',
-    logo_url: 'https://images.unsplash.com/photo-1598908314077-8ac7bb123c3c?w=100&h=100&fit=crop',
+    logo_url: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=100&h=100&fit=crop',
     website_url: 'https://descript.com',
     short_tagline: 'All-in-one video and audio editing',
     categories: ['Repurposing', 'Captions', 'Dubbing/Voice'],
@@ -42,7 +42,7 @@ export const tools: Tool[] = [
   {
     tool_id: 'capcut',
     name: 'CapCut',
-    logo_url: 'https://images.unsplash.com/photo-1579547944212-c4f4d8d0c5c3?w=100&h=100&fit=crop',
+    logo_url: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=100&h=100&fit=crop',
     website_url: 'https://capcut.com',
     short_tagline: 'Free video editing with AI features',
     categories: ['Repurposing', 'Captions'],
