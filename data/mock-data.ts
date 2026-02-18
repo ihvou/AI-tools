@@ -230,7 +230,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=abc123&t=782',
     timestamp: '13:02',
     category: ['Repurposing', 'Captions'],
-    offer_size: 'Large'
   },
   {
     deal_id: 'deal-002',
@@ -242,7 +241,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=jkl012&t=634',
     timestamp: '10:34',
     category: ['UGC Avatars', 'Video Gen/B-roll'],
-    offer_size: 'Large'
   },
   {
     deal_id: 'deal-003',
@@ -254,7 +252,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=pqr678&t=945',
     timestamp: '15:45',
     category: ['Repurposing', 'Captions', 'Dubbing/Voice'],
-    offer_size: 'Small'
   },
   {
     deal_id: 'deal-004',
@@ -266,7 +263,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=bcd890&t=823',
     timestamp: '13:43',
     category: ['Dubbing/Voice'],
-    offer_size: 'Medium'
   },
   {
     deal_id: 'deal-005',
@@ -278,7 +274,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=nop012&t=567',
     timestamp: '9:27',
     category: ['Video Gen/B-roll', 'Scripts/Hooks'],
-    offer_size: 'Medium'
   },
   {
     deal_id: 'deal-006',
@@ -290,7 +285,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=hij456&t=412',
     timestamp: '6:52',
     category: ['Captions'],
-    offer_size: 'Small'
   },
   {
     deal_id: 'deal-007',
@@ -302,7 +296,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=abc789&t=234',
     timestamp: '3:54',
     category: ['Video Gen/B-roll'],
-    offer_size: 'Large'
   },
   {
     deal_id: 'deal-008',
@@ -313,7 +306,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=def123&t=678',
     timestamp: '11:18',
     category: ['Repurposing'],
-    offer_size: 'Small'
   },
   {
     deal_id: 'deal-009',
@@ -324,7 +316,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=ghi456&t=345',
     timestamp: '5:45',
     category: ['UGC Avatars'],
-    offer_size: 'Large'
   },
   {
     deal_id: 'deal-010',
@@ -336,7 +327,6 @@ export const deals: Deal[] = [
     receipt_url: 'https://youtube.com/watch?v=jkl789&t=512',
     timestamp: '8:32',
     category: ['Scripts/Hooks'],
-    offer_size: 'Small'
   }
 ];
 

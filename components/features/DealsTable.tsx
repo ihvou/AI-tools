@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { ExternalLink, Copy, Check, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { DealBottomSheet } from '@/components/features/DealBottomSheet';
-import { tools } from '@/lib/data/mockData';
-import type { Deal } from '@/lib/types';
+import type { Deal, Tool } from '@/lib/types';
 
 interface DealsTableProps {
   deals: Deal[];
+  tools: Tool[];
 }
 
-export function DealsTable({ deals }: DealsTableProps) {
+export function DealsTable({ deals, tools }: DealsTableProps) {
   const [copiedDealId, setCopiedDealId] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
@@ -68,8 +68,10 @@ export function DealsTable({ deals }: DealsTableProps) {
                           <Copy size={14} className="text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" />
                         )}
                       </button>
+                    ) : deal.offer_type === 'Link' ? (
+                      <Badge variant="neutral" size="sm">Link deal</Badge>
                     ) : (
-                      <span className="text-sm text-gray-400">-</span>
+                      <span className="text-sm text-gray-400">No code</span>
                     )}
                   </td>
                   <td className="py-4 px-4 text-sm text-gray-600 hidden md:table-cell">

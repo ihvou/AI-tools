@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
 import { DealsPreviewTable } from '@/components/features/DealsPreviewTable';
-import { tools, deals, categories, getDealsByToolId, getReviewsByToolId, getToolsByCategory, getDealsByCategory, getCategorySlug } from '@/lib/data/mockData';
+import { getAppData, getCategorySlug } from '@/lib/server/backendData';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { tools, deals, reviews, categories } = await getAppData();
   const previewTools = tools.slice(0, 8);
   const previewDeals = deals.slice(0, 6);
 
@@ -74,8 +75,8 @@ export default function HomePage() {
               </thead>
               <tbody>
                 {previewTools.map((tool) => {
-                  const toolDeals = getDealsByToolId(tool.tool_id);
-                  const toolReviews = getReviewsByToolId(tool.tool_id);
+                  const toolDeals = deals.filter((deal) => deal.tool_id === tool.tool_id);
+                  const toolReviews = reviews.filter((review) => review.tool_id === tool.tool_id);
                   const hasDeals = toolDeals.length > 0;
 
                   return (
@@ -152,7 +153,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <DealsPreviewTable deals={previewDeals} />
+          <DealsPreviewTable deals={previewDeals} tools={tools} />
         </section>
 
         {/* Categories */}
@@ -161,8 +162,8 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {categories.map((category) => {
               const slug = getCategorySlug(category);
-              const toolCount = getToolsByCategory(category).length;
-              const dealCount = getDealsByCategory(category).length;
+              const toolCount = tools.filter((tool) => tool.categories.includes(category)).length;
+              const dealCount = deals.filter((deal) => deal.category.includes(category)).length;
 
               return (
                 <div

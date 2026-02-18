@@ -4,14 +4,15 @@ import { useSearchParams } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { ReviewsSection } from '@/components/features/ReviewsSection';
 import { DealsTable } from '@/components/features/DealsTable';
-import type { ReviewEvidence, Deal } from '@/lib/types';
+import type { Deal, ReviewEvidence, Tool } from '@/lib/types';
 
 interface ToolDetailTabsProps {
   reviews: ReviewEvidence[];
   deals: Deal[];
+  tools: Tool[];
 }
 
-export function ToolDetailTabs({ reviews, deals }: ToolDetailTabsProps) {
+export function ToolDetailTabs({ reviews, deals, tools }: ToolDetailTabsProps) {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get('tab') === 'deals' ? 'deals' : 'reviews';
 
@@ -44,7 +45,7 @@ export function ToolDetailTabs({ reviews, deals }: ToolDetailTabsProps) {
             No deals found for this tool yet.
           </div>
         ) : (
-          <DealsTable deals={deals} />
+          <DealsTable deals={deals} tools={tools} />
         )}
       </TabsContent>
     </Tabs>

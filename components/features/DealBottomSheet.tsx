@@ -115,6 +115,8 @@ export function DealBottomSheet({ deal, tool, onClose }: DealBottomSheetProps) {
                       <Copy size={14} className="text-gray-400" />
                     )}
                   </button>
+                ) : deal.offer_type === 'Link' ? (
+                  <Badge variant="neutral" size="sm">Link deal</Badge>
                 ) : (
                   <span className="text-sm text-gray-400">No code</span>
                 )}

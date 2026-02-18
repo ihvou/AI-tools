@@ -7,23 +7,25 @@ import { Container } from '@/components/ui/Container';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ToolDetailTabs } from '@/components/features/ToolDetailTabs';
-import { tools, getReviewsByToolId, getDealsByToolId } from '@/lib/data/mockData';
+import { getAppData } from '@/lib/server/backendData';
 
 export async function generateStaticParams() {
+  const { tools } = await getAppData();
   return tools.map((tool) => ({
     id: tool.tool_id,
   }));
 }
 
-export default function ToolDetailPage({ params }: { params: { id: string } }) {
+export default async function ToolDetailPage({ params }: { params: { id: string } }) {
+  const { tools, reviews: allReviews, deals: allDeals } = await getAppData();
   const tool = tools.find((t) => t.tool_id === params.id);
 
   if (!tool) {
     notFound();
   }
 
-  const reviews = getReviewsByToolId(tool.tool_id);
-  const toolDeals = getDealsByToolId(tool.tool_id);
+  const reviews = allReviews.filter((review) => review.tool_id === tool.tool_id);
+  const toolDeals = allDeals.filter((deal) => deal.tool_id === tool.tool_id);
 
   return (
     <div className="min-h-screen bg-white">
@@ -102,7 +104,7 @@ export default function ToolDetailPage({ params }: { params: { id: string } }) {
       {/* Tabs */}
       <Container>
         <Suspense fallback={<div className="py-8">Loading...</div>}>
-          <ToolDetailTabs reviews={reviews} deals={toolDeals} />
+          <ToolDetailTabs reviews={reviews} deals={toolDeals} tools={tools} />
         </Suspense>
       </Container>
     </div>

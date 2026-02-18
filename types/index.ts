@@ -25,7 +25,6 @@ export type ReviewTag =
   | 'Reliability' 
   | 'Other';
 export type OfferType = 'Code' | 'Link' | 'Trial extension' | 'Credit bonus' | 'Unknown';
-export type OfferSize = 'Small' | 'Medium' | 'Large' | 'Unknown';
 
 export interface Tool {
   tool_id: string;
@@ -67,7 +66,6 @@ export interface Deal {
   receipt_url: string;
   timestamp: string;
   category: Category[];
-  offer_size?: OfferSize;
 }
 
 export interface CategoryInfo {

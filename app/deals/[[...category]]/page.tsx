@@ -1,23 +1,34 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, ChevronDown, ArrowUpDown, ExternalLink, Copy, Check, MoreHorizontal, X } from 'lucide-react';
+import { Search, ChevronDown, ArrowUpDown, ExternalLink, Copy, Check, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
 import { DealBottomSheet } from '@/components/features/DealBottomSheet';
-import { deals, tools, categories, getCategorySlug, getCategoryFromSlug } from '@/lib/data/mockData';
-import type { Category, Deal } from '@/lib/types';
+import type { Category, Deal, Tool } from '@/lib/types';
 
 type SortField = 'tool' | 'offer' | 'last_seen';
 type SortDirection = 'asc' | 'desc';
 
+function getCategorySlug(category: Category): string {
+  return category.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-');
+}
+
+function getCategoryFromSlug(slug: string, categories: Category[]): Category | undefined {
+  return categories.find((category) => getCategorySlug(category) === slug);
+}
+
 export default function DealsPage({ params }: { params: { category?: string[] } }) {
   const router = useRouter();
   const categorySlug = params.category?.[0];
-  const activeCategory = categorySlug ? getCategoryFromSlug(categorySlug) : undefined;
+
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOfferType, setSelectedOfferType] = useState<string>('all');
@@ -26,41 +37,82 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
   const [copiedDealId, setCopiedDealId] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
-  const offerTypeOptions = useMemo(() => {
-    const unique = new Set(deals.map((d) => d.offer_type));
-    return Array.from(unique).sort();
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const response = await fetch('/api/frontend-data', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Failed to fetch frontend data');
+        const data = await response.json() as {
+          deals: Deal[];
+          tools: Tool[];
+          categories: Category[];
+        };
+
+        if (!cancelled) {
+          setDeals(data.deals || []);
+          setTools(data.tools || []);
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const toolsById = useMemo(() => {
+    const map = new Map<string, Tool>();
+    tools.forEach((tool) => map.set(tool.tool_id, tool));
+    return map;
+  }, [tools]);
+
+  const activeCategory = useMemo(
+    () => (categorySlug ? getCategoryFromSlug(categorySlug, categories) : undefined),
+    [categorySlug, categories]
+  );
+
+  const offerTypeOptions = useMemo(() => {
+    const unique = new Set(deals.map((deal) => deal.offer_type));
+    return Array.from(unique).sort();
+  }, [deals]);
 
   const filteredAndSortedDeals = useMemo(() => {
     let result = [...deals];
 
-    // Category filter (from URL)
     if (activeCategory) {
-      result = result.filter((d) => d.category.includes(activeCategory));
+      result = result.filter((deal) => deal.category.includes(activeCategory));
     }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((d) => {
-        const tool = tools.find((t) => t.tool_id === d.tool_id);
+      result = result.filter((deal) => {
+        const tool = toolsById.get(deal.tool_id);
         return (
-          d.offer_text.toLowerCase().includes(q) ||
-          (d.code && d.code.toLowerCase().includes(q)) ||
-          (tool && tool.name.toLowerCase().includes(q))
+          deal.offer_text.toLowerCase().includes(q) ||
+          (deal.code && deal.code.toLowerCase().includes(q)) ||
+          Boolean(tool && tool.name.toLowerCase().includes(q))
         );
       });
     }
 
     if (selectedOfferType !== 'all') {
-      result = result.filter((d) => d.offer_type === selectedOfferType);
+      result = result.filter((deal) => deal.offer_type === selectedOfferType);
     }
 
     result.sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
         case 'tool': {
-          const toolA = tools.find((t) => t.tool_id === a.tool_id);
-          const toolB = tools.find((t) => t.tool_id === b.tool_id);
+          const toolA = toolsById.get(a.tool_id);
+          const toolB = toolsById.get(b.tool_id);
           cmp = (toolA?.name || '').localeCompare(toolB?.name || '');
           break;
         }
@@ -75,14 +127,13 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
     });
 
     return result;
-  }, [searchQuery, selectedOfferType, sortField, sortDirection, activeCategory]);
+  }, [deals, activeCategory, searchQuery, selectedOfferType, sortField, sortDirection, toolsById]);
 
   function handleCategoryChange(value: string) {
     if (value === 'all') {
       router.push('/deals');
     } else {
-      const slug = getCategorySlug(value as Category);
-      router.push(`/deals/${slug}`);
+      router.push(`/deals/${getCategorySlug(value as Category)}`);
     }
   }
 
@@ -108,7 +159,7 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
 
   const pageTitle = activeCategory ? `${activeCategory} Deals` : 'All Deals';
   const totalCount = activeCategory
-    ? deals.filter((d) => d.category.includes(activeCategory)).length
+    ? deals.filter((deal) => deal.category.includes(activeCategory)).length
     : deals.length;
 
   return (
@@ -117,7 +168,6 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
         <div className="py-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle}</h1>
 
-          {/* Search & Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -138,9 +188,7 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
               >
                 <option value="all">All categories</option>
                 {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
+                  <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -153,69 +201,53 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
                 className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All offer types</option>
-                {offerTypeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
+                {offerTypeOptions.map((type) => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
           </div>
 
-          <div className="mb-4 text-sm text-gray-600">
-            Showing {filteredAndSortedDeals.length} of {totalCount} deals
-          </div>
+          <div className="mb-4 text-sm text-gray-600">Showing {filteredAndSortedDeals.length} of {totalCount} deals</div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 text-left">
                   <th className="pb-3 pr-6">
-                    <button
-                      onClick={() => handleSort('tool')}
-                      className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
-                    >
+                    <button onClick={() => handleSort('tool')} className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900">
                       Tool <SortIcon field="tool" />
                     </button>
                   </th>
                   <th className="pb-3 px-4 hidden sm:table-cell">
-                    <button
-                      onClick={() => handleSort('offer')}
-                      className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
-                    >
+                    <button onClick={() => handleSort('offer')} className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900">
                       Offer <SortIcon field="offer" />
                     </button>
                   </th>
                   <th className="pb-3 px-4 text-sm font-semibold text-gray-700">Code</th>
                   <th className="pb-3 px-4 hidden md:table-cell">
-                    <button
-                      onClick={() => handleSort('last_seen')}
-                      className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
-                    >
+                    <button onClick={() => handleSort('last_seen')} className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900">
                       Last seen <SortIcon field="last_seen" />
                     </button>
                   </th>
                   <th className="pb-3 px-4 text-sm font-semibold text-gray-700 hidden md:table-cell">Receipt</th>
-                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700">
-                    Claim
-                  </th>
-                  {/* Mobile ellipsis column */}
-                  <th className="pb-3 pl-2 text-sm font-semibold text-gray-700 sm:hidden w-10">
-                    <span className="sr-only">More</span>
-                  </th>
+                  <th className="pb-3 pl-4 text-sm font-semibold text-gray-700">Claim</th>
+                  <th className="pb-3 pl-2 text-sm font-semibold text-gray-700 sm:hidden w-10"><span className="sr-only">More</span></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredAndSortedDeals.length === 0 ? (
+                {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-gray-500">
-                      No deals found matching your filters.
-                    </td>
+                    <td colSpan={7} className="py-12 text-center text-gray-500">Loading deals...</td>
+                  </tr>
+                ) : filteredAndSortedDeals.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-gray-500">No deals found matching your filters.</td>
                   </tr>
                 ) : (
                   filteredAndSortedDeals.map((deal) => {
-                    const tool = tools.find((t) => t.tool_id === deal.tool_id);
+                    const tool = toolsById.get(deal.tool_id);
                     if (!tool) return null;
 
                     const claimDealUrl = deal.link_url || deal.receipt_url;
@@ -225,86 +257,49 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
                         <td className="py-4 pr-6">
                           <Link href={`/tool/${tool.tool_id}?tab=deals`} className="flex items-center gap-3 group">
                             <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0 relative overflow-hidden">
-                              <Image
-                                src={tool.logo_url}
-                                alt={tool.name}
-                                fill
-                                className="object-cover"
-                              />
+                              <Image src={tool.logo_url} alt={tool.name} fill className="object-cover" />
                             </div>
-                            <span className="font-medium text-gray-900 group-hover:text-blue-600">
-                              {tool.name}
-                            </span>
+                            <span className="font-medium text-gray-900 group-hover:text-blue-600">{tool.name}</span>
                           </Link>
                         </td>
-                        <td className="py-4 px-4 text-sm text-gray-900 hidden sm:table-cell">
-                          {deal.offer_text}
-                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-900 hidden sm:table-cell">{deal.offer_text}</td>
                         <td className="py-4 px-4">
                           {deal.code ? (
-                            <button
-                              onClick={() => handleCopyCode(deal.deal_id, deal.code!)}
-                              className="inline-flex items-center gap-1.5 group/copy"
-                              title="Click to copy code"
-                            >
-                              <Badge variant="neutral" size="sm" className="cursor-pointer group-hover/copy:bg-gray-200 transition-colors">
-                                {deal.code}
-                              </Badge>
+                            <button onClick={() => handleCopyCode(deal.deal_id, deal.code!)} className="inline-flex items-center gap-1.5 group/copy" title="Click to copy code">
+                              <Badge variant="neutral" size="sm" className="cursor-pointer group-hover/copy:bg-gray-200 transition-colors">{deal.code}</Badge>
                               {copiedDealId === deal.deal_id ? (
                                 <Check size={14} className="text-green-600" />
                               ) : (
                                 <Copy size={14} className="text-gray-400 opacity-0 group-hover/copy:opacity-100 transition-opacity" />
                               )}
                             </button>
+                          ) : deal.offer_type === 'Link' ? (
+                            <Badge variant="neutral" size="sm">Link deal</Badge>
                           ) : (
-                            <span className="text-sm text-gray-400">-</span>
+                            <span className="text-sm text-gray-400">No code</span>
                           )}
                         </td>
                         <td className="py-4 px-4 text-sm text-gray-600 hidden md:table-cell">
-                          {new Date(deal.last_seen_date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
+                          {new Date(deal.last_seen_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </td>
                         <td className="py-4 px-4 hidden md:table-cell">
-                          <a
-                            href={deal.receipt_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                          >
-                            {deal.timestamp} <ExternalLink size={12} />
+                          <a href={deal.receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-700">
+                            {deal.timestamp} ↗
                           </a>
                         </td>
                         <td className="py-4 pl-4 w-[100px]">
-                          <a
-                            href={claimDealUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative inline-flex items-center justify-center w-[88px] h-8 hidden sm:inline-flex"
-                          >
+                          <a href={claimDealUrl} target="_blank" rel="noopener noreferrer" className="relative items-center justify-center w-[88px] h-8 hidden sm:inline-flex">
                             <ExternalLink size={16} className="absolute text-gray-400 transition-opacity group-hover/row:opacity-0" />
                             <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded opacity-0 group-hover/row:opacity-100 transition-opacity whitespace-nowrap">
                               Claim Deal
                             </span>
                           </a>
-                          {/* Mobile: just the icon */}
-                          <a
-                            href={claimDealUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="sm:hidden inline-flex items-center justify-center w-8 h-8"
-                          >
+                          <a href={claimDealUrl} target="_blank" rel="noopener noreferrer" className="sm:hidden inline-flex items-center justify-center w-8 h-8">
                             <ExternalLink size={16} className="text-blue-600" />
                           </a>
                         </td>
-                        {/* Mobile ellipsis */}
                         <td className="py-4 pl-2 sm:hidden">
-                          <button
-                            onClick={() => setSelectedDeal(deal)}
-                            className="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
-                          >
+                          <button onClick={() => setSelectedDeal(deal)} className="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors">
                             <MoreHorizontal size={18} />
                           </button>
                         </td>
@@ -318,11 +313,10 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
         </div>
       </Container>
 
-      {/* Mobile Bottom Sheet */}
       {selectedDeal && (
         <DealBottomSheet
           deal={selectedDeal}
-          tool={tools.find((t) => t.tool_id === selectedDeal.tool_id)!}
+          tool={toolsById.get(selectedDeal.tool_id)!}
           onClose={() => setSelectedDeal(null)}
         />
       )}

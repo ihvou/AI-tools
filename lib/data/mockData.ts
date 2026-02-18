@@ -368,8 +368,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-08',
     receipt_url: 'https://youtube.com/watch?v=abc123&t=782',
     timestamp: '13:02',
-    category: ['Repurposing', 'Captions'],
-    offer_size: 'Large'
+    category: ['Repurposing', 'Captions']
   },
   {
     deal_id: 'deal-002',
@@ -380,8 +379,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-05',
     receipt_url: 'https://youtube.com/watch?v=jkl012&t=634',
     timestamp: '10:34',
-    category: ['UGC Avatars', 'Video Gen/B-roll'],
-    offer_size: 'Large'
+    category: ['UGC Avatars', 'Video Gen/B-roll']
   },
   {
     deal_id: 'deal-003',
@@ -392,8 +390,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-09',
     receipt_url: 'https://youtube.com/watch?v=pqr678&t=945',
     timestamp: '15:45',
-    category: ['Repurposing', 'Captions', 'Dubbing/Voice'],
-    offer_size: 'Small'
+    category: ['Repurposing', 'Captions', 'Dubbing/Voice']
   },
   {
     deal_id: 'deal-004',
@@ -404,8 +401,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-07',
     receipt_url: 'https://youtube.com/watch?v=bcd890&t=823',
     timestamp: '13:43',
-    category: ['Dubbing/Voice'],
-    offer_size: 'Medium'
+    category: ['Dubbing/Voice']
   },
   {
     deal_id: 'deal-005',
@@ -416,8 +412,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-04',
     receipt_url: 'https://youtube.com/watch?v=nop012&t=567',
     timestamp: '9:27',
-    category: ['Video Gen/B-roll', 'Scripts/Hooks'],
-    offer_size: 'Medium'
+    category: ['Video Gen/B-roll', 'Scripts/Hooks']
   },
   {
     deal_id: 'deal-006',
@@ -428,8 +423,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-06',
     receipt_url: 'https://youtube.com/watch?v=hij456&t=412',
     timestamp: '6:52',
-    category: ['Captions'],
-    offer_size: 'Medium'
+    category: ['Captions']
   },
   {
     deal_id: 'deal-007',
@@ -440,8 +434,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-01',
     receipt_url: 'https://youtube.com/watch?v=tuv678&t=345',
     timestamp: '5:45',
-    category: ['UGC Avatars', 'Video Gen/B-roll'],
-    offer_size: 'Large'
+    category: ['UGC Avatars', 'Video Gen/B-roll']
   },
   {
     deal_id: 'deal-008',
@@ -452,8 +445,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-01-28',
     receipt_url: 'https://youtube.com/watch?v=wxy901&t=512',
     timestamp: '8:32',
-    category: ['Video Gen/B-roll', 'Scripts/Hooks'],
-    offer_size: 'Small'
+    category: ['Video Gen/B-roll', 'Scripts/Hooks']
   },
   {
     deal_id: 'deal-009',
@@ -464,8 +456,7 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-02',
     receipt_url: 'https://youtube.com/watch?v=zab234&t=678',
     timestamp: '11:18',
-    category: ['Repurposing', 'Captions'],
-    offer_size: 'Medium'
+    category: ['Repurposing', 'Captions']
   },
   {
     deal_id: 'deal-010',
@@ -476,8 +467,29 @@ export const deals: Deal[] = [
     last_seen_date: '2026-02-03',
     receipt_url: 'https://youtube.com/watch?v=cde567&t=234',
     timestamp: '3:54',
-    category: ['Video Gen/B-roll'],
-    offer_size: 'Large'
+    category: ['Video Gen/B-roll']
+  },
+  {
+    deal_id: 'deal-011',
+    tool_id: 'descript',
+    offer_text: '20% off Creator plan via affiliate link',
+    offer_type: 'Link',
+    link_url: 'https://descript.com/creator-offer',
+    last_seen_date: '2026-02-11',
+    receipt_url: 'https://youtube.com/watch?v=pqr678&t=702',
+    timestamp: '11:42',
+    category: ['Repurposing', 'Captions', 'Dubbing/Voice']
+  },
+  {
+    deal_id: 'deal-012',
+    tool_id: 'veed',
+    offer_text: '15% off annual plan via partner link',
+    offer_type: 'Link',
+    link_url: 'https://veed.io/partner-offer',
+    last_seen_date: '2026-02-12',
+    receipt_url: 'https://youtube.com/watch?v=zab234&t=544',
+    timestamp: '9:04',
+    category: ['Repurposing', 'Captions']
   }
 ];
 

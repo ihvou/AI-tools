@@ -6,14 +6,14 @@ import Image from 'next/image';
 import { ExternalLink, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { DealBottomSheet } from '@/components/features/DealBottomSheet';
-import { tools } from '@/lib/data/mockData';
-import type { Deal } from '@/lib/types';
+import type { Deal, Tool } from '@/lib/types';
 
 interface DealsPreviewTableProps {
   deals: Deal[];
+  tools: Tool[];
 }
 
-export function DealsPreviewTable({ deals }: DealsPreviewTableProps) {
+export function DealsPreviewTable({ deals, tools }: DealsPreviewTableProps) {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
   return (
@@ -66,8 +66,10 @@ export function DealsPreviewTable({ deals }: DealsPreviewTableProps) {
                   <td className="py-4 px-4">
                     {deal.code ? (
                       <Badge variant="neutral" size="sm">{deal.code}</Badge>
+                    ) : deal.offer_type === 'Link' ? (
+                      <Badge variant="neutral" size="sm">Link deal</Badge>
                     ) : (
-                      <span className="text-sm text-gray-400">-</span>
+                      <span className="text-sm text-gray-400">No code</span>
                     )}
                   </td>
                   <td className="py-4 px-4 text-sm text-gray-600 hidden md:table-cell">
