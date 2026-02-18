@@ -1,26 +1,28 @@
 # AI Tools — Tech Architecture
 
-## High-level stack (as discussed)
+## High-level stack
 - Frontend: **Next.js 14** (App Router) with **TypeScript**.
 - Styling: **Tailwind CSS** (utility-first).
 - UI primitives: **Radix UI** (accessible tabs component).
 - Icons: **Lucide React**.
-- Images: **Next.js Image** component with external Unsplash URLs.
-- Backend (future): **Supabase** (PostgreSQL database + APIs).
+- Images: **Next.js Image** component with external URLs.
+- Backend: **Supabase** (PostgreSQL database + REST API).
 - Data processing (future): **Supabase Edge Functions** (TypeScript) for ingestion and extraction pipelines.
 
 ## Current deployment
 - Next.js app deployed on **Vercel** at `ai-tools-gold.vercel.app`.
 - GitHub repo: `ihvou/AI-tools`.
-- Data: static mock data in `lib/data/mockData.ts` (to be replaced with Supabase in production).
+- Supabase project provides PostgreSQL database.
+- Fallback: static mock data in `lib/data/mockData.ts` is used when Supabase env vars are not configured.
 
-## Suggested production deployment shape
+## Production deployment shape
 - Next.js app deployed on Vercel with environment variables for Supabase.
 - Supabase provides:
-  - PostgreSQL tables
-  - Row Level Security (RLS) policies if needed
-  - REST and GraphQL (optional) access
-  - Edge Functions for ingestion and scheduled processing
+  - PostgreSQL tables (normalized schema)
+  - Row Level Security (RLS) policies
+  - REST API (PostgREST) for reads and writes
+  - RPC functions for aggregations and joins
+  - Edge Functions for ingestion and scheduled processing (future)
 
 ## Core backend responsibilities
 1) Serve lists and detail pages for:
@@ -31,7 +33,7 @@
 2) Handle "Report" submissions:
    - store reports
    - basic dedupe + spam throttling (optional)
-3) Ingestion + processing pipeline:
+3) Ingestion + processing pipeline (future):
    - fetch tool metadata from aggregators (where available)
    - discover relevant YouTube videos
    - fetch transcripts / captions
@@ -42,7 +44,6 @@
 ### Tool metadata
 - Tool directories/aggregators (API or parsing public pages).
 - Only keep fields we can obtain reliably (name, categories, pricing tier, platforms, official URL, logo URL).
-- Logo images: currently Unsplash URLs; to be replaced with tool-specific logos.
 
 ### YouTube evidence and deals
 - YouTube video metadata:
@@ -51,41 +52,27 @@
 - Transcript / captions (used to extract mention snippets and deal mentions)
 - Receipts are YouTube links with timestamps.
 
+---
+
 ## Database structure (Supabase / PostgreSQL)
 
-Supabase project: `pkpxbdtxpdilwuhjngzw`
+The schema uses a **normalized relational design** with junction tables (not PG arrays for relationships). All migrations are in `supabase/migrations/`.
 
-The DB uses **UUID primary keys**, **normalized join tables** for many-to-many relationships (instead of PG arrays), and **CHECK constraints** on text columns (instead of PG enum types). Supabase auto-generates a REST API (PostgREST) for every table.
+### Tables overview
 
-### Architectural decisions
+| Table | Purpose |
+|-------|---------|
+| `tools` | AI tool records (slug, name, logo, pricing, etc.) |
+| `categories` | Category names and slugs (normalized, not enum) |
+| `tool_categories` | Junction table: tool <-> category (many-to-many) |
+| `youtube_channels` | YouTube channel metadata |
+| `youtube_videos` | YouTube video metadata |
+| `video_mentions` | Junction: which videos mention which tools |
+| `review_snippets` | Review quotes extracted from videos |
+| `deals` | Promo deals extracted from videos |
+| `reports` | User-submitted flags (review/deal issues) |
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| Primary keys | `uuid` (auto-generated) + `slug` text column with unique constraint on `tools` | UUIDs are safer for distributed inserts (pipeline + manual). The `slug` column is used for URL routing. |
-| Categories | Normalized: `categories` table + `tool_categories` join table | More flexible than PG arrays — categories can have metadata (slug, counts), and adding/renaming categories is a single row update. |
-| Value constraints | `text` columns + `CHECK` constraints (not PG `enum` types) | PG enums are hard to alter in production (can't remove values, adding requires DDL). CHECK constraints are easier to evolve. |
-| Table naming | `review_snippets` (not `review_evidence` from TS types) | DB uses domain-accurate name. The data service layer maps it to the frontend's `ReviewEvidence` interface. |
-| Reviews ↔ Videos | `review_snippets.video_id` is a FK → `youtube_videos.id` | Proper relational link enables pipeline-side joins. The frontend doesn't query `youtube_videos` directly — `channel_name`, `video_title`, `publish_date` are denormalized onto `review_snippets` for read performance. |
-
-### Value constraints reference
-
-These are the allowed values for CHECK-constrained columns. They must match the TypeScript union types in `lib/types/index.ts` exactly.
-
-| Column | Allowed values |
-|---|---|
-| `tools.pricing_model` | `'Free'`, `'Free trial'`, `'Paid'`, `'Freemium'`, `'Unknown'` |
-| `review_snippets.sentiment` | `'Pro'`, `'Con'`, `'Neutral'` |
-| `deals.offer_type` | `'Code'`, `'Link'`, `'Trial extension'`, `'Credit bonus'`, `'Unknown'` |
-| `deals.offer_size` | `'Small'`, `'Medium'`, `'Large'`, `'Unknown'` |
-| `reports.report_type` | `'review'`, `'deal'` |
-
-Tags are stored as `text[]` (not enum-constrained) in `review_snippets.tags`. The frontend defines the allowed set in TS:
-`'UI/UX' | 'Output quality' | 'Relevance' | 'Speed' | 'Pricing' | 'Cancellation/Refund' | 'Limits' | 'Integrations' | 'Watermark' | 'Export quality' | 'Support' | 'Reliability' | 'Other'`
-
-Platforms are stored as `text[]` in `tools.platforms`. Frontend allowed set:
-`'Web' | 'iOS' | 'Android' | 'Desktop' | 'API' | 'Unknown'`
-
-### Core tables (UI-facing)
+### Core tables (DDL)
 
 ```sql
 -- ════════════════════════════════════════════
@@ -93,488 +80,446 @@ Platforms are stored as `text[]` in `tools.platforms`. Frontend allowed set:
 -- ════════════════════════════════════════════
 create table tools (
   id                    uuid primary key default gen_random_uuid(),
-  slug                  text not null unique,          -- URL-safe identifier, e.g. 'opus-clip'
+  slug                  text not null unique,      -- URL-safe ID, e.g. 'opus-clip'
   name                  text not null,
-  logo_url              text not null,
-  website_url           text not null,                 -- official site (maps to TS website_url)
-  registration_url      text,                          -- nullable, sign-up link
   short_tagline         text not null,
+  logo_url              text not null,
+  website_url           text not null,
+  registration_url      text,                      -- nullable
   pricing_model         text not null check (pricing_model in
-                          ('Free','Free trial','Paid','Freemium','Unknown')),
-  platforms             text[] not null default '{}',  -- e.g. {'Web','iOS','Desktop'}
-  review_sources_count  integer not null default 0,
-  last_seen_review_date date,                          -- nullable, most recent review date
-  created_at            timestamptz default now(),
-  updated_at            timestamptz default now()
+                          ('Free', 'Free trial', 'Paid', 'Freemium', 'Unknown')),
+  platforms             text[] not null default '{}',
+  review_sources_count  integer not null default 0 check (review_sources_count >= 0),
+  last_seen_review_date date,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
 );
+-- Auto-update updated_at via trigger: trg_tools_updated_at
 
 -- ════════════════════════════════════════════
 -- categories
 -- ════════════════════════════════════════════
 create table categories (
-  id          uuid primary key default gen_random_uuid(),
-  name        text not null unique,                    -- display name, e.g. 'Scripts/Hooks'
-  slug        text not null unique,                    -- URL slug, e.g. 'scripts-hooks'
-  created_at  timestamptz default now()
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null unique,
+  slug       text not null unique,
+  created_at timestamptz not null default now()
 );
 
--- Seed data (must exist before tools can be linked):
--- INSERT INTO categories (name, slug) VALUES
---   ('Repurposing', 'repurposing'),
---   ('UGC Avatars', 'ugc-avatars'),
---   ('Captions', 'captions'),
---   ('Scripts/Hooks', 'scripts-hooks'),
---   ('Video Gen/B-roll', 'video-gen-b-roll'),
---   ('Dubbing/Voice', 'dubbing-voice');
+-- Seeded values:
+-- Repurposing, UGC Avatars, Captions, Scripts/Hooks, Video Gen/B-roll, Dubbing/Voice
 
 -- ════════════════════════════════════════════
--- tool_categories  (many-to-many join)
+-- tool_categories (junction)
 -- ════════════════════════════════════════════
 create table tool_categories (
   tool_id     uuid not null references tools(id) on delete cascade,
   category_id uuid not null references categories(id) on delete cascade,
-  created_at  timestamptz default now(),
+  created_at  timestamptz not null default now(),
   primary key (tool_id, category_id)
 );
 
 -- ════════════════════════════════════════════
--- review_snippets  (maps to TS ReviewEvidence)
+-- review_snippets
 -- ════════════════════════════════════════════
 create table review_snippets (
-  id                         uuid primary key default gen_random_uuid(),
-  tool_id                    uuid not null references tools(id) on delete cascade,
-  video_id                   uuid not null references youtube_videos(id) on delete cascade,
-  channel_name               text not null,             -- denormalized from youtube_channels
-  video_title                text not null,             -- denormalized from youtube_videos
-  publish_date               date not null,             -- denormalized from youtube_videos
-  sentiment                  text not null check (sentiment in ('Pro','Con','Neutral')),
-  tags                       text[] not null default '{}', -- e.g. {'UI/UX','Speed','Pricing'}
-  snippet_text               text not null,             -- the review quote/snippet
-  receipt_url                text not null,             -- YouTube URL with timestamp
-  receipt_timestamp_seconds  integer not null,          -- video position in seconds (e.g. 342)
-  sponsored_flag             boolean default false,
-  extraction_confidence      numeric,                   -- ML confidence score (pipeline use)
-  created_at                 timestamptz default now()
+  id                        uuid primary key default gen_random_uuid(),
+  tool_id                   uuid not null references tools(id) on delete cascade,
+  video_id                  uuid not null references youtube_videos(id) on delete cascade,
+  sentiment                 text not null check (sentiment in ('Pro', 'Con', 'Neutral')),
+  tags                      text[] not null default '{}',
+  snippet_text              text not null,
+  video_title               text not null default '',
+  channel_name              text,
+  publish_date              date,
+  receipt_timestamp_seconds integer not null check (receipt_timestamp_seconds >= 0),
+  receipt_url               text not null,
+  sponsored_flag            boolean default false,
+  extraction_confidence     numeric(4,3),
+  created_at                timestamptz not null default now()
 );
 
 -- ════════════════════════════════════════════
 -- deals
 -- ════════════════════════════════════════════
 create table deals (
-  id                         uuid primary key default gen_random_uuid(),
-  tool_id                    uuid not null references tools(id) on delete cascade,
-  video_id                   uuid references youtube_videos(id) on delete set null, -- nullable
-  offer_text                 text not null,
-  offer_type                 text not null check (offer_type in
-                               ('Code','Link','Trial extension','Credit bonus','Unknown')),
-  code                       text,                      -- promo code (nullable)
-  link_url                   text,                      -- direct deal link (nullable)
-  receipt_url                text not null,             -- YouTube timestamp proof
-  receipt_timestamp_seconds  integer,                   -- video position in seconds
-  category                   text[] not null default '{}', -- category names for filtering
-  offer_size                 text check (offer_size in ('Small','Medium','Large','Unknown')),
-  active                     boolean not null default true, -- soft-delete for expired deals
-  last_seen                  timestamptz not null default now(),
-  created_at                 timestamptz default now(),
-  updated_at                 timestamptz default now()
+  id                        uuid primary key default gen_random_uuid(),
+  tool_id                   uuid not null references tools(id) on delete cascade,
+  video_id                  uuid references youtube_videos(id) on delete set null,
+  offer_text                text not null,
+  offer_type                text check (offer_type in
+                              ('Code', 'Link', 'Trial extension', 'Credit bonus', 'Unknown')),
+  code                      text,                  -- promo code (nullable)
+  link_url                  text,                  -- direct deal link (nullable)
+  category                  text[] not null default '{}',  -- category names for filtering
+  receipt_timestamp_seconds integer check (receipt_timestamp_seconds >= 0),
+  receipt_url               text not null,
+  active                    boolean not null default true,
+  last_seen                 timestamptz not null default now(),
+  created_at                timestamptz not null default now(),
+  updated_at                timestamptz not null default now()
 );
+-- Auto-update updated_at via trigger: trg_deals_updated_at
 
 -- ════════════════════════════════════════════
--- reports  (user-submitted flags from the UI)
+-- reports (user-submitted flags)
 -- ════════════════════════════════════════════
 create table reports (
-  id                    uuid primary key default gen_random_uuid(),
-  report_type           text not null check (report_type in ('review', 'deal')),
-  entity_id             uuid not null,                 -- review_snippets.id or deals.id
-  issue_type            text not null,
-  notes                 text,
-  reporter_fingerprint  text,                          -- browser fingerprint for spam throttling
-  status                text not null default 'open',  -- triage workflow: open → resolved
-  created_at            timestamptz default now()
+  id                   uuid primary key default gen_random_uuid(),
+  report_type          text not null check (report_type in ('review', 'deal')),
+  entity_id            uuid not null,
+  issue_type           text not null,
+  notes                text,
+  reporter_fingerprint text,
+  status               text not null default 'open'
+                         check (status in ('open', 'triaged', 'resolved', 'dismissed')),
+  created_at           timestamptz not null default now()
 );
 ```
 
-### Pipeline tables (not queried by UI)
+### Pipeline tables (used by ingestion, not directly by UI)
 
 ```sql
--- ════════════════════════════════════════════
--- youtube_channels
--- ════════════════════════════════════════════
 create table youtube_channels (
-  id                  uuid primary key default gen_random_uuid(),
-  youtube_channel_id  text unique,                     -- YouTube's channel ID
-  name                text not null,
-  handle              text,                            -- @handle
-  channel_url         text,
-  created_at          timestamptz default now()
+  id                 uuid primary key default gen_random_uuid(),
+  youtube_channel_id text unique,
+  name               text not null,
+  handle             text,
+  channel_url        text,
+  created_at         timestamptz not null default now()
 );
 
--- ════════════════════════════════════════════
--- youtube_videos
--- ════════════════════════════════════════════
 create table youtube_videos (
-  id                uuid primary key default gen_random_uuid(),
-  youtube_video_id  text not null unique,              -- YouTube's video ID (e.g. 'dQw4w9WgXcQ')
-  channel_id        uuid references youtube_channels(id) on delete set null,
-  title             text not null,
-  description       text,
-  video_url         text,
-  published_at      timestamptz,
-  created_at        timestamptz default now()
+  id               uuid primary key default gen_random_uuid(),
+  youtube_video_id text not null unique,
+  channel_id       uuid references youtube_channels(id) on delete set null,
+  title            text not null,
+  description      text,
+  video_url        text,
+  published_at     timestamptz,
+  created_at       timestamptz not null default now()
 );
 
--- ════════════════════════════════════════════
--- video_mentions  (pipeline tracking)
--- ════════════════════════════════════════════
 create table video_mentions (
   id                      uuid primary key default gen_random_uuid(),
   tool_id                 uuid not null references tools(id) on delete cascade,
   video_id                uuid not null references youtube_videos(id) on delete cascade,
-  mention_count           integer not null default 1,
+  mention_count           integer not null default 1 check (mention_count > 0),
   first_mentioned_second  integer,
   last_mentioned_second   integer,
-  extraction_confidence   numeric,
-  created_at              timestamptz default now(),
-  unique (tool_id, video_id)
+  extraction_confidence   numeric(4,3),
+  created_at              timestamptz not null default now(),
+  unique (tool_id, video_id, first_mentioned_second)
 );
+```
+
+### Indexes
+
+```sql
+create index idx_tools_name on tools(name);
+create index idx_tools_pricing_model on tools(pricing_model);
+create index idx_tool_categories_category_id on tool_categories(category_id);
+create index idx_youtube_videos_channel_id on youtube_videos(channel_id);
+create index idx_youtube_videos_published_at on youtube_videos(published_at desc);
+create index idx_video_mentions_tool_id on video_mentions(tool_id);
+create index idx_video_mentions_video_id on video_mentions(video_id);
+create index idx_review_snippets_tool_id on review_snippets(tool_id);
+create index idx_review_snippets_sentiment on review_snippets(sentiment);
+create index idx_review_snippets_publish_date on review_snippets(publish_date desc);
+create index idx_deals_tool_id on deals(tool_id);
+create index idx_deals_active_last_seen on deals(active, last_seen desc);
+create index idx_reports_created_at on reports(created_at desc);
+create index idx_reports_type_entity on reports(report_type, entity_id);
 ```
 
 ### Row Level Security (RLS)
 
-All tables have RLS enabled. UI-facing tables are **public-read**. Only `reports` accepts **anonymous inserts**.
+All tables are **public-read**. Only the `reports` table accepts anonymous inserts.
 
 ```sql
--- All UI-facing tables: public read via anon key
-alter table tools enable row level security;
-create policy "Public read" on tools for select using (true);
-
-alter table categories enable row level security;
-create policy "Public read" on categories for select using (true);
-
-alter table tool_categories enable row level security;
-create policy "Public read" on tool_categories for select using (true);
-
-alter table review_snippets enable row level security;
-create policy "Public read" on review_snippets for select using (true);
-
-alter table deals enable row level security;
-create policy "Public read" on deals for select using (true);
-
--- reports: anonymous insert + no read (admin reads via service_role)
-alter table reports enable row level security;
-create policy "Anyone can submit" on reports for insert with check (true);
-
--- Pipeline tables: public read (useful for debugging, no sensitive data)
-alter table youtube_channels enable row level security;
-create policy "Public read" on youtube_channels for select using (true);
-
-alter table youtube_videos enable row level security;
-create policy "Public read" on youtube_videos for select using (true);
+-- All tables: public read-only (select policy using (true))
+-- reports: additionally allows insert for anon + authenticated roles
+create policy "Anyone can submit" on reports for insert
+  to anon, authenticated with check (true);
 ```
 
-### TS → DB field name mapping
+### Migrations
 
-The frontend TypeScript interfaces use slightly different names than the DB columns. The **data service layer** (`lib/data/supabase.ts`) handles this mapping so UI components never see DB column names.
+All schema changes are tracked in `supabase/migrations/`:
 
-| TS interface | TS field | DB table | DB column | Notes |
-|---|---|---|---|---|
-| `Tool` | `tool_id` | `tools` | `slug` | URL identifier, not the UUID `id` |
-| `Tool` | `website_url` | `tools` | `website_url` | — |
-| `Tool` | `categories` | `tool_categories` | JOIN → `categories.name` | Resolved via join, returned as `string[]` |
-| `Tool` | `last_seen_review_date` | `tools` | `last_seen_review_date` | — |
-| `ReviewEvidence` | `review_id` | `review_snippets` | `id` | UUID |
-| `ReviewEvidence` | `video_id` | `review_snippets` | `video_id` | FK to `youtube_videos.id` (UUID, not YouTube's video ID) |
-| `ReviewEvidence` | `snippet_text` | `review_snippets` | `snippet_text` | — |
-| `ReviewEvidence` | `tags` | `review_snippets` | `tags` | `text[]`, not enum-constrained |
-| `ReviewEvidence` | `timestamp` | `review_snippets` | `receipt_timestamp_seconds` | Integer seconds in DB → formatted as `"M:SS"` string by service layer |
-| `Deal` | `deal_id` | `deals` | `id` | UUID |
-| `Deal` | `last_seen_date` | `deals` | `last_seen` | `timestamptz` in DB → `date` string by service layer |
-| `Deal` | `timestamp` | `deals` | `receipt_timestamp_seconds` | Same seconds→string conversion as reviews |
-| `Deal` | `category` | `deals` | `category` | `text[]` — category names stored directly on deals (denormalized for query simplicity) |
-| `Deal` | `offer_size` | `deals` | `offer_size` | — |
-| `CategoryInfo` | `tools_count` | — | computed | Via `get_category_counts()` RPC |
-| `CategoryInfo` | `deals_count` | — | computed | Via `get_category_counts()` RPC |
+| Migration | Purpose |
+|-----------|---------|
+| `20260217230000_init_ai_tools_schema.sql` | Core normalized schema (9 tables), indexes, RLS |
+| `20260218033000_align_schema_with_frontend_types.sql` | Column alignment, RPC functions, seed categories |
+| `20260218150000_seed_expanded_realistic_sample_data.sql` | 16 tools, 18 deals, 24 reviews |
+| `20260218153000_seed_additional_reviews_coverage.sql` | Additional review coverage |
+| `20260218162000_fix_and_enrich_sample_data.sql` | Data enrichment |
+| `20260218170000_fix_remaining_rpc_rls_and_reviews.sql` | Additional RPCs and RLS fixes |
 
 ---
 
-## API surface (Supabase)
+## API surface
 
-### What Supabase provides out of the box (PostgREST)
+### Server-side data layer: `lib/server/backendData.ts`
 
-Every table gets an auto-generated REST API at `https://<project>.supabase.co/rest/v1/<table>`.
-The UI-facing queries below work directly via `supabase-js` with **no custom API routes**.
+This is the **central data access layer** for the application. It provides:
 
-> **Note:** Because categories use a join table (not arrays on `tools`), category-based filtering requires either PostgREST's nested resource syntax or a custom RPC. The table below shows both approaches.
+1. **`getAppData()`** — Main export, wrapped in React `cache()` for request deduplication. Returns `{ tools, deals, reviews, categories }`.
+   - If Supabase env vars are configured: fetches from Supabase REST API
+   - If not configured or on error: falls back to mock data from `lib/data/mockData.ts`
 
-| Frontend need | PostgREST query (via `supabase-js`) |
-|---|---|
-| All tools | `supabase.from('tools').select('*')` |
-| Tool by slug | `supabase.from('tools').select('*').eq('slug', slug).single()` |
-| Tools search | `supabase.from('tools').select('*').or('name.ilike.%q%,short_tagline.ilike.%q%')` |
-| Filter by pricing | `supabase.from('tools').select('*').eq('pricing_model', val)` |
-| Sort tools | `.order('name' \| 'review_sources_count' \| 'last_seen_review_date', { ascending })` |
-| Tool + categories | `supabase.from('tools').select('*, tool_categories(category_id, categories(name, slug))')` |
-| Reviews for tool | `supabase.from('review_snippets').select('*').eq('tool_id', toolUuid)` |
-| Reviews + filters | `.eq('sentiment', s).contains('tags', [tag]).ilike('channel_name', q)` |
-| Deals for tool | `supabase.from('deals').select('*').eq('tool_id', toolUuid).eq('active', true)` |
-| Deals search | `.or('offer_text.ilike.%q%,code.ilike.%q%')` |
-| Submit report | `supabase.from('reports').insert({ report_type, entity_id, issue_type, notes })` |
+2. **`createReport(input)`** — Inserts a report row via Supabase REST POST.
 
-### Custom RPCs (not provided out of the box)
+3. **`getCategoryCounts()`** — Calls RPC `get_category_counts`.
 
-These must be created as **Supabase database functions** because they involve aggregations or multi-table joins that PostgREST can't express cleanly.
+4. **`searchAll(query)`** — Calls RPC `search_all`.
 
-```sql
--- 1. Category counts (used by homepage + category nav)
---    Returns each category with its tool_count and deal_count.
---    Because categories are a normalized table (not an enum), we query it directly.
-create or replace function get_category_counts()
-returns table (
-  category_id uuid,
-  name        text,
-  slug        text,
-  tool_count  bigint,
-  deal_count  bigint
-) language sql stable as $$
-  select
-    c.id,
-    c.name,
-    c.slug,
-    (select count(*) from tool_categories tc where tc.category_id = c.id),
-    (select count(*) from deals d
-      join tool_categories tc on tc.tool_id = d.tool_id
-      where tc.category_id = c.id)
-  from categories c
-  order by c.name;
-$$;
--- Usage: supabase.rpc('get_category_counts')
--- Maps to: CategoryInfo[] in the frontend
+5. **`getCategorySlug(category)`** / **`getCategoryFromSlug(slug, categories)`** — Pure string utilities.
 
--- 2. Tools by category slug
---    Returns all tools belonging to a category, with their full data.
---    Needed because PostgREST can't easily filter the parent via a child join table.
-create or replace function get_tools_by_category(p_slug text)
-returns setof tools language sql stable as $$
-  select t.*
-  from tools t
-  join tool_categories tc on tc.tool_id = t.id
-  join categories c on c.id = tc.category_id
-  where c.slug = p_slug;
-$$;
--- Usage: supabase.rpc('get_tools_by_category', { p_slug: 'captions' })
+#### How it talks to Supabase
 
--- 3. Deals by category slug
---    Returns all active deals for tools in a given category.
-create or replace function get_deals_by_category(p_slug text)
-returns setof deals language sql stable as $$
-  select d.*
-  from deals d
-  join tool_categories tc on tc.tool_id = d.tool_id
-  join categories c on c.id = tc.category_id
-  where c.slug = p_slug
-    and d.active = true;
-$$;
--- Usage: supabase.rpc('get_deals_by_category', { p_slug: 'captions' })
-
--- 4. Tool detail with aggregated counts (reduces 3 queries to 1)
-create or replace function get_tool_detail(p_slug text)
-returns json language sql stable as $$
-  select json_build_object(
-    'tool',         (select row_to_json(t) from tools t where t.slug = p_slug),
-    'review_count', (select count(*) from review_snippets r
-                      join tools t on t.id = r.tool_id where t.slug = p_slug),
-    'deal_count',   (select count(*) from deals d
-                      join tools t on t.id = d.tool_id
-                      where t.slug = p_slug and d.active = true),
-    'categories',   (select coalesce(json_agg(c.name), '[]'::json)
-                      from categories c
-                      join tool_categories tc on tc.category_id = c.id
-                      join tools t on t.id = tc.tool_id
-                      where t.slug = p_slug)
-  );
-$$;
--- Usage: supabase.rpc('get_tool_detail', { p_slug: 'opus-clip' })
-
--- 5. Full-text search across tools + deals
-create or replace function search_all(q text)
-returns json language sql stable as $$
-  select json_build_object(
-    'tools', (select coalesce(json_agg(t), '[]'::json) from tools t
-              where t.name ilike '%' || q || '%'
-                 or t.short_tagline ilike '%' || q || '%'),
-    'deals', (select coalesce(json_agg(row_to_json(d)), '[]'::json)
-              from deals d
-              join tools t on t.id = d.tool_id
-              where (d.offer_text ilike '%' || q || '%'
-                 or d.code ilike '%' || q || '%'
-                 or t.name ilike '%' || q || '%')
-                and d.active = true)
-  );
-$$;
--- Usage: supabase.rpc('search_all', { q: 'opus' })
-```
-
-### Supabase client setup (Next.js)
+Uses **native `fetch()`** to Supabase REST API (PostgREST). Does NOT use `supabase-js` client library.
 
 ```typescript
-// lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+// Pattern for reads:
+async function restGet<T>(pathWithQuery: string, useService = false): Promise<T> {
+  const response = await fetch(`${url}/rest/v1/${pathWithQuery}`, {
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store',
+  });
+  return response.json() as Promise<T>;
+}
 
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-```
-
-Required environment variables (`.env.local`):
-```
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-```
-
-### Data service layer (`lib/data/supabase.ts`)
-
-This module replaces `lib/data/mockData.ts`. It wraps all Supabase queries and maps DB rows to the frontend TypeScript interfaces, handling:
-- **UUID → slug**: The UI uses `slug` for URLs; the DB uses `uuid` for FKs. This layer resolves `slug` ↔ `uuid` transparently.
-- **Column renaming**: e.g. `review_snippets.snippet_text` → `ReviewEvidence.snippet_text` (same), but `deals.last_seen` → `Deal.last_seen_date`.
-- **Timestamp formatting**: `receipt_timestamp_seconds` (integer) → `timestamp` (string `"M:SS"`).
-- **Category resolution**: JOIN `tool_categories` + `categories` → flat `string[]` on the `Tool` object.
-- **Active filtering**: Only return `deals` where `active = true` (expired deals are soft-deleted).
-
-```typescript
-// lib/data/supabase.ts — key exports (same interface as mockData.ts)
-
-export async function getTools(): Promise<Tool[]>
-export async function getToolBySlug(slug: string): Promise<Tool | null>
-export async function getReviewsByToolId(toolUuid: string): Promise<ReviewEvidence[]>
-export async function getDealsByToolId(toolUuid: string): Promise<Deal[]>
-export async function getToolsByCategory(categorySlug: string): Promise<Tool[]>
-export async function getDealsByCategory(categorySlug: string): Promise<Deal[]>
-export async function getCategories(): Promise<CategoryInfo[]>
-export async function submitReport(report: ReportInput): Promise<void>
-
-// Pure client-side utilities (unchanged from mockData.ts):
-export function getCategorySlug(category: Category): string
-export function getCategoryFromSlug(slug: string): Category | null
-
-// Timestamp formatting helper:
-function formatTimestamp(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+// Pattern for RPCs:
+async function rpcCall<T>(name: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: { apikey: service, Authorization: `Bearer ${service}`, ... },
+    body: JSON.stringify(body),
+  });
+  return response.json() as Promise<T>;
 }
 ```
 
-### Migration from mock data
+#### Data mapping
 
-| Mock helper | Supabase replacement | Notes |
-|---|---|---|
-| `tools` (array import) | `getTools()` → `supabase.from('tools').select('*, tool_categories(categories(name))')` | Resolves categories via join |
-| `getToolById(id)` | `getToolBySlug(slug)` → `supabase.from('tools').select('*...').eq('slug', slug).single()` | Uses slug, not tool_id |
-| `getReviewsByToolId(id)` | `getReviewsByToolId(uuid)` → `supabase.from('review_snippets').select('*').eq('tool_id', uuid)` | Caller resolves slug→uuid first |
-| `getDealsByToolId(id)` | `getDealsByToolId(uuid)` → `supabase.from('deals').select('*').eq('tool_id', uuid).eq('active', true)` | Filters inactive deals |
-| `getToolsByCategory(cat)` | `getToolsByCategory(slug)` → `supabase.rpc('get_tools_by_category', { p_slug })` | RPC handles the join |
-| `getDealsByCategory(cat)` | `getDealsByCategory(slug)` → `supabase.rpc('get_deals_by_category', { p_slug })` | RPC handles the join |
-| `categories` (array import) | `getCategories()` → `supabase.rpc('get_category_counts')` | Returns computed counts |
-| `getCategorySlug(cat)` | Keep as-is (pure string transform) | No DB call needed |
-| `getCategoryFromSlug(slug)` | Keep as-is (pure string transform) | No DB call needed |
+The `backendData.ts` file maps Supabase row shapes to frontend TypeScript types:
+
+| DB Row Type | Maps To | Key transforms |
+|-------------|---------|---------------|
+| `ToolRow` (with nested `tool_categories`) | `Tool` | `row.id` -> internal ID; `row.slug` -> `tool_id`; categories extracted from junction join |
+| `DealRow` | `Deal` | `receipt_timestamp_seconds` -> `timestamp` string (e.g., "5:42"); `last_seen` -> `last_seen_date` (date only) |
+| `ReviewRow` | `ReviewEvidence` | `receipt_timestamp_seconds` -> `timestamp` string; tags validated against known values |
+
+**Important**: The frontend uses `tool.tool_id` which maps to the DB `tools.slug` field (not the UUID `tools.id`). The UUID is only used for internal DB references.
+
+#### REST queries used by `loadFromSupabase()`
+
+```
+-- Tools (with categories via junction table):
+tools?select=id,slug,name,logo_url,website_url,registration_url,short_tagline,
+  pricing_model,platforms,review_sources_count,last_seen_review_date,
+  tool_categories(categories(name))&order=name.asc
+
+-- Deals:
+deals?select=id,tool_id,offer_text,offer_type,code,link_url,last_seen,
+  receipt_url,receipt_timestamp_seconds,category&order=last_seen.desc
+
+-- Reviews:
+review_snippets?select=id,tool_id,video_id,channel_name,video_title,publish_date,
+  sentiment,tags,snippet_text,receipt_url,receipt_timestamp_seconds,
+  sponsored_flag&order=publish_date.desc
+```
+
+### Supabase RPC functions
+
+```sql
+-- Category counts (homepage + category nav)
+create or replace function get_category_counts()
+returns table (category_id uuid, name text, slug text, tool_count bigint, deal_count bigint)
+language sql stable;
+
+-- Tool detail with counts (optimization)
+create or replace function get_tool_detail(p_slug text)
+returns json language sql stable;
+
+-- Full-text search across tools + deals
+create or replace function search_all(q text)
+returns json language sql stable;
+```
+
+### Next.js API routes
+
+These are thin wrappers around `lib/server/backendData.ts` functions, providing HTTP endpoints for client components.
+
+| Route | Method | Purpose | Handler |
+|-------|--------|---------|---------|
+| `/api/frontend-data` | GET | Returns all app data (`{ tools, deals, reviews, categories }`) | Calls `getAppData()` |
+| `/api/reports` | POST | Submit a report | Calls `createReport()`. Body: `{ reportType, entityId, issueType, notes? }` |
+| `/api/search` | GET | Search tools + deals | Calls `searchAll(q)`. Query param: `?q=<term>` |
+| `/api/category-counts` | GET | Get category counts | Calls `getCategoryCounts()` |
+
+### Environment variables
+
+Required for Supabase integration (`.env.local`):
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+If these are not set, the app falls back to mock data automatically.
+
+---
 
 ## Frontend architecture
 
 ### Next.js App Router structure
 
-Routes:
 ```
 app/
-├── layout.tsx              # Root layout (Header + Footer + metadata)
-├── page.tsx                # Home page (SSR)
-├── globals.css             # Global Tailwind styles
+├── layout.tsx                  # Root layout (Header + Footer + metadata)
+├── page.tsx                    # Home page (SSR, server component)
+├── globals.css                 # Global Tailwind styles + .pb-safe utility
 ├── tools/
-│   ├── page.tsx            # All Tools — client component (search/filter/sort)
-│   └── [category]/
-│       └── page.tsx        # Category Tools — SSR (generateStaticParams)
+│   └── [[...category]]/
+│       └── page.tsx            # All Tools + Category Tools (client component)
 ├── deals/
-│   ├── page.tsx            # All Deals — client component (search/filter/sort)
-│   └── [category]/
-│       └── page.tsx        # Category Deals — SSR (generateStaticParams)
+│   └── [[...category]]/
+│       └── page.tsx            # All Deals + Category Deals (client component)
 ├── tool/
 │   └── [id]/
-│       └── page.tsx        # Tool Detail — SSR shell with client tabs
-└── methodology/
-    └── page.tsx            # Static methodology page
+│       └── page.tsx            # Tool Detail (SSR shell + client tabs)
+├── methodology/
+│   └── page.tsx                # Static methodology page
+└── api/
+    ├── frontend-data/
+    │   └── route.ts            # GET: all app data
+    ├── reports/
+    │   └── route.ts            # POST: submit report
+    ├── search/
+    │   └── route.ts            # GET: search tools+deals
+    └── category-counts/
+        └── route.ts            # GET: category counts
 ```
 
 ### Rendering strategy
-- **SSR (Server Components)**: Home page, Tool Detail page shell, Category pages (tools + deals), Methodology.
-- **Client Components** (`'use client'`):
-  - `/tools` page — interactive search, pricing filter, column sorting
-  - `/deals` page — interactive search, offer type filter, column sorting, copy code, Claim Deal hover
-  - `ReviewsSection` — sentiment pills, tag/channel filters, search, sort
-  - `DealsTable` — copy code, Claim Deal hover
-  - `Header` — mobile menu toggle state
 
-### Category pages (SSR)
-- Use `generateStaticParams()` to pre-render all category slugs at build time.
+| Page | Rendering | Data source |
+|------|-----------|-------------|
+| Home `/` | Server Component (SSR) | `getAppData()` directly |
+| Tools `/tools/[[...category]]` | Client Component (`'use client'`) | `fetch('/api/frontend-data')` via `useEffect` |
+| Deals `/deals/[[...category]]` | Client Component (`'use client'`) | `fetch('/api/frontend-data')` via `useEffect` |
+| Tool Detail `/tool/[id]` | Server Component shell + Client tabs | `getAppData()` for shell; `ToolDetailTabs` is client |
+| Methodology `/methodology` | Static/Server Component | No data fetching |
+
+### Category routing pattern
+
+Both `/tools` and `/deals` use Next.js **optional catch-all routes** `[[...category]]`:
+- `/tools` -> `params.category` is `undefined`
+- `/tools/repurposing` -> `params.category` is `['repurposing']`
+- Category dropdown changes trigger `router.push('/tools/<slug>')` or `router.push('/tools')` for "All"
 - Category slug format: `category.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-')`
-- URL pattern: `/tools/<slug>` and `/deals/<slug>` (NOT `/tools/category/<slug>`)
-- `getCategoryFromSlug()` helper maps slug back to display name.
+- `getCategoryFromSlug()` maps slug back to display name
 
 ### Component system
+
 ```
 components/
 ├── ui/
-│   ├── Container.tsx       # Global width container (max-w-6xl mx-auto px-6)
-│   ├── Button.tsx          # Primary/secondary/ghost, 3 sizes, rounded
-│   ├── Badge.tsx           # neutral/blue/pro/con variants, sm/md sizes, rounded
-│   └── Tabs.tsx            # Radix UI accessible tabs wrapper
+│   ├── Container.tsx           # Global width container (max-w-6xl mx-auto px-6)
+│   ├── Button.tsx              # Primary/secondary/ghost, 3 sizes, rounded
+│   ├── Badge.tsx               # neutral/blue/pro/con variants, sm/md sizes, rounded
+│   └── Tabs.tsx                # Radix UI accessible tabs wrapper
 └── features/
-    ├── Header.tsx          # Sticky header, desktop nav + mobile hamburger
-    ├── Footer.tsx          # 3-column footer with helper text
-    ├── ReviewsSection.tsx  # Client: sentiment/tag/channel/search/sort filtering
-    └── DealsTable.tsx      # Client: copy code, Claim Deal hover
+    ├── Header.tsx              # Sticky header, desktop nav + mobile hamburger
+    ├── Footer.tsx              # 3-column footer with helper text
+    ├── ReviewsSection.tsx      # Client: sentiment/tag/channel/search/sort filtering
+    ├── DealsTable.tsx          # Client: deals table for tool detail, copy code, Claim Deal hover, mobile ellipsis+bottom sheet
+    ├── DealsPreviewTable.tsx   # Client: deals preview table for home page, mobile ellipsis+bottom sheet
+    ├── DealBottomSheet.tsx     # Client: mobile slide-up panel for deal details
+    └── ToolDetailTabs.tsx      # Client: Radix tabs wrapper reading ?tab= search param
 ```
 
-### Data layer (current: mock)
+### Data layer
+
 ```
 lib/
+├── server/
+│   └── backendData.ts          # Server-only data layer (Supabase REST + mock fallback)
 ├── data/
-│   └── mockData.ts         # Static tools, deals, reviewEvidence, categories
+│   └── mockData.ts             # Static mock data (fallback when Supabase not configured)
 ├── types/
-│   └── index.ts            # TypeScript interfaces (Tool, Deal, ReviewEvidence, etc.)
-└── utils.ts                # cn() utility (clsx + twMerge)
+│   └── index.ts                # TypeScript interfaces (Tool, Deal, ReviewEvidence, etc.)
+└── utils.ts                    # cn() utility (clsx + twMerge)
 ```
 
-Helper functions exported from `mockData.ts`:
-- `getDealsByToolId(toolId)` — deals for a specific tool
-- `getToolsByCategory(category)` — tools in a category
-- `getDealsByCategory(category)` — deals in a category
-- `getCategorySlug(category)` — generates URL slug from category name
-- `getCategoryFromSlug(slug)` — reverse lookup from slug to category
+### Data flow patterns
+
+**Server components** (Home page, Tool Detail shell):
+```
+getAppData() -> Supabase REST -> map rows -> return { tools, deals, reviews, categories }
+     └── Falls back to mock data if Supabase not configured
+```
+
+**Client components** (Tools list, Deals list):
+```
+useEffect -> fetch('/api/frontend-data') -> API route -> getAppData() -> response
+     └── useState for tools/deals/categories
+     └── isLoading state for loading indicator
+```
+
+**Tool Detail tabs** (client within server shell):
+```
+Server shell: getAppData() -> filter reviews/deals for tool -> pass as props
+ToolDetailTabs: useSearchParams() reads ?tab=deals -> sets defaultValue on Tabs
+     └── Wrapped in <Suspense> boundary
+```
 
 ### Key implementation patterns
 
 **Client-side filtering (Tools/Deals list pages):**
 - `useMemo` for filtered/sorted results reacting to state changes
 - `useState` for search query, selected filters, sort field/direction
-- Category dropdown uses `useRouter().push()` to navigate to SSR category page
+- Category dropdown uses `useRouter().push()` to update URL
+
+**"Has deals" filter (Tools page only):**
+- `hasDealsOnly` boolean state
+- Custom checkbox UI (styled blue square with CheckIcon)
+- Filters: `tools.filter(tool => dealsByToolId.get(tool.tool_id) > 0)`
 
 **Claim Deal hover (no layout shift):**
 - Fixed-width cell (`w-[100px]`) + fixed inner container (`w-[88px] h-8`)
 - Absolute positioning for both default icon and hover button
 - `opacity` transition (NOT `display` toggle) prevents table width changes
 - Uses Tailwind `group/row` and `group-hover/row:opacity-*` for row-level hover
+- Mobile: just shows the ExternalLink icon (no hover transition)
 
 **Copy Code:**
 - `navigator.clipboard.writeText(code)` on badge click
 - `useState` tracks which deal was just copied
 - `setTimeout` clears the "copied" state after 2 seconds
-- Visual: Copy icon → Check icon transition
+- Visual: Copy icon -> Check icon transition
+
+**Mobile bottom sheet (DealBottomSheet):**
+- `useState` for visibility animation state
+- `requestAnimationFrame` to trigger slide-up after mount
+- `document.body.style.overflow = 'hidden'` to lock body scroll
+- CSS: `translate-y-full -> translate-y-0` with `transition-transform duration-200 ease-out`
+- Close: reverse animation, unmount after 200ms via `setTimeout`
+- Safe area: `.pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }`
 
 **Review filtering (ReviewsSection):**
 - Sentiment: segmented pill buttons (active = blue-600, inactive = gray-100)
 - Tag/Channel: `<select>` dropdowns populated from review data
 - Search: text input filtering snippet text, channel, and tags
 - Sort: Most recent / Oldest by publish date
+
+---
 
 ## TypeScript types (key interfaces)
 
@@ -592,11 +537,10 @@ type ReviewTag    = 'UI/UX' | 'Output quality' | 'Relevance' | 'Speed'
                   | 'Integrations' | 'Watermark' | 'Export quality'
                   | 'Support' | 'Reliability' | 'Other';
 type OfferType    = 'Code' | 'Link' | 'Trial extension' | 'Credit bonus' | 'Unknown';
-type OfferSize    = 'Small' | 'Medium' | 'Large' | 'Unknown';
 
 // ── Interfaces ──────────────────────────────────
 interface Tool {
-  tool_id: string;
+  tool_id: string;           // maps to DB tools.slug
   name: string;
   logo_url: string;
   website_url: string;
@@ -610,8 +554,8 @@ interface Tool {
 }
 
 interface ReviewEvidence {
-  review_id: string;
-  tool_id: string;
+  review_id: string;         // maps to DB review_snippets.id
+  tool_id: string;           // maps to DB tools.slug (resolved via junction)
   video_id: string;
   channel_name: string;
   video_title: string;
@@ -620,22 +564,21 @@ interface ReviewEvidence {
   tags: ReviewTag[];
   snippet_text: string;
   receipt_url: string;
-  timestamp: string;
+  timestamp: string;         // derived: "M:SS" from receipt_timestamp_seconds
   sponsored_flag?: boolean;
 }
 
 interface Deal {
-  deal_id: string;
-  tool_id: string;
+  deal_id: string;           // maps to DB deals.id
+  tool_id: string;           // maps to DB tools.slug (resolved via junction)
   offer_text: string;
   offer_type: OfferType;
   code?: string;
   link_url?: string;
-  last_seen_date: string;
+  last_seen_date: string;    // derived: first 10 chars of deals.last_seen
   receipt_url: string;
-  timestamp: string;
+  timestamp: string;         // derived: "M:SS" from receipt_timestamp_seconds
   category: Category[];
-  offer_size?: OfferSize;
 }
 
 interface CategoryInfo {
@@ -666,4 +609,4 @@ interface CategoryInfo {
 - Data quality:
   - store raw transcript segments and extraction confidence if feasible (optional for MVP).
 - External images:
-  - `next.config.ts` must whitelist `images.unsplash.com` (and future logo domains) in `remotePatterns`.
+  - `next.config.ts` must whitelist external image domains in `remotePatterns`.

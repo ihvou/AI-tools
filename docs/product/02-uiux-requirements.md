@@ -1,6 +1,6 @@
 # AI Tools — UI/UX Requirements (Detailed)
 
-This document reflects the agreed structure and constraints, aligned with the provided mockups and the corrections applied during implementation (layout width, header consistency, missing filters, consistent rounding, Claim Deal hover, and branding updates).
+This document reflects the agreed structure and constraints, aligned with the provided mockups and the corrections applied during implementation (layout width, header consistency, missing filters, consistent rounding, Claim Deal hover, branding updates, mobile layouts, and merged category routes).
 
 ## Global design principles
 - **Minimalistic**: clean typography, neutral grays, one accent blue (`blue-600`).
@@ -13,7 +13,7 @@ This document reflects the agreed structure and constraints, aligned with the pr
 
 ## Global layout rules (fix inconsistent width)
 - Use a single page container everywhere (header/content/footer) via the `Container` component.
-- Desktop max-width: ~1120–1200px; padding 24px.
+- Desktop max-width: ~1120-1200px; padding 24px.
 - Tablet padding ~20px. Mobile padding 16px.
 - Tables should not overflow the container; never change width between pages/tabs.
 
@@ -67,8 +67,8 @@ UI requirement:
 
 ## Pages and states
 
-### 0) Home page
-Goal: brief intro + quick access + previews.
+### 0) Home page (`/`)
+Goal: brief intro + quick access + previews. Server component using `getAppData()`.
 
 Top (compact, not tall):
 - H1: **"AI Tools Reviews and Deals"**
@@ -79,140 +79,159 @@ Top (compact, not tall):
 Keep this section tight so content starts near the fold.
 
 Block A — Tools preview
-- Title "Tools" + link "View all tools →"
-- Table columns (desktop):
-  - Tool (logo `rounded` + name + 1-line description)
-  - Category (badges `rounded`; show 2 max + "+n")
-  - Pricing
-  - Evidence (e.g., "24 videos")
-  - Deals (small badge "1 deal" if available, links to tool detail deals tab)
+- Title "Tools" + link "View all tools ->"
+- Table columns:
+  - Tool (logo `rounded` + name + 1-line description) — always visible
+  - Category (badges `rounded`; show 2 max + "+n") — `hidden md:table-cell`
+  - Pricing — `hidden sm:table-cell`
+  - **Reviews** (e.g., "24") — always visible
+  - Deals (small badge with count if available, links to tool detail deals tab) — always visible
 - Show first 8 rows.
+- **Mobile columns visible: Tool, Reviews, Deals** (3 columns).
 
-Block B — Deals preview
-- Title "Deals" + link "View all deals →"
-- Table columns (desktop):
-  - Tool (logo `rounded` + name)
-  - Offer
-  - Code (badge `rounded` / "No code")
-  - Last seen
-  - Receipt (timestamp link "13:02 ↗")
+Block B — Deals preview (client component: `DealsPreviewTable`)
+- Title "Deals" + link "View all deals ->"
+- Table columns:
+  - Tool (logo `rounded` + name) — always visible
+  - Offer — `hidden sm:table-cell`
+  - Code (badge `rounded` / "Link deal" / "No code") — always visible
+  - Last seen — `hidden md:table-cell`
+  - Receipt (timestamp link "13:02") — `hidden md:table-cell`
+  - **Claim** (external link icon) — always visible
+  - **Ellipsis (more)** — `sm:hidden` (mobile only, opens bottom sheet)
 - Show first 6 rows.
+- **Mobile columns visible: Tool, Code, Claim, Ellipsis** (4 columns).
 
 Block C — Categories grid
 - Cards (`rounded` border, desktop: 2 rows x 3 cards; mobile stacked):
   - Category name
-  - counts "X tools · Y deals"
+  - counts "X tools - Y deals"
   - links:
-    - "Tools in <Category> →" → links to `/tools/<slug>`
-    - "Deals in <Category> →" → links to `/deals/<slug>`
+    - "Tools in <Category> ->" links to `/tools/<slug>`
+    - "Deals in <Category> ->" links to `/deals/<slug>`
 
-Mobile Home
-- Convert tables to stacked lists, keep the same actions.
-- Preserve consistency with header/footer container width.
+### 1) Tools List page (`/tools` and `/tools/<slug>`)
+**Single client component** handling both the "All Tools" view and category-filtered views via Next.js optional catch-all route `[[...category]]`.
 
-### 1) Tools List page (`/tools`)
-Client component with interactive search, filters, and sorting.
+When a category slug is present in the URL (e.g. `/tools/repurposing`):
+- Title changes to "{Category} Tools" (e.g., "Repurposing Tools")
+- Category dropdown pre-selects the active category
+- Data is filtered to that category
+- Search, pricing filter, sort, and "Has deals" filter all remain functional
+
+When no category slug (just `/tools`):
+- Title: "All Tools"
+- Category dropdown shows "All categories"
 
 Top area:
-- H1: "All Tools"
+- H1: dynamic ("All Tools" or "{Category} Tools")
 - Filters row below title:
-  - Search input "Search tools…" (`rounded`)
-  - Category dropdown (`rounded`) — **navigates** to `/tools/<slug>` on selection (not a client-side filter)
+  - Search input "Search tools..." (`rounded`)
+  - Category dropdown (`rounded`) — **updates URL** to `/tools/<slug>` on selection (selecting "All" navigates to `/tools`)
   - Pricing filter dropdown (`rounded`)
-- Sort: clickable column headers (Tool name, Evidence, Pricing) with sort indicator icons
+  - **"Has deals" checkbox** — filters to only show tools that have at least one associated deal
+- Sort: clickable column headers (Tool name, Reviews, Pricing, Last seen) with sort indicator icons
 
-Tools table (desktop):
-- Tool (logo `rounded` + name + 1-line description)
-- Category (badges `rounded`)
-- Pricing
-- Evidence (e.g., "42 videos")
-- Deals badge ("1 deal")
+Tools table columns:
+- Tool (logo `rounded` + name + 1-line description) — always visible
+- Category (badges `rounded`) — `hidden md:table-cell`
+- Pricing — `hidden sm:table-cell`
+- **Reviews** (number, e.g. "42") — always visible
+- Last seen — `hidden lg:table-cell`
+- Deals badge (count linking to tool detail deals tab) — always visible
+
+**Mobile columns visible: Tool, Reviews, Deals** (3 columns).
 
 Interactions:
 - Row/tool click opens Tool Details (Reviews tab default).
-- Clicking "1 deal" opens Tool Details on Deals tab.
-- Category dropdown navigates to SSR category page.
+- Clicking deal count badge opens Tool Details on Deals tab (`?tab=deals`).
+- Category dropdown navigates via `router.push()`.
 
 "Showing N of M tools" counter below filters.
 
-Mobile:
-- Filters stack vertically.
-- Responsive column hiding (categories hidden on mobile, some columns hidden on tablet).
+Data fetching: `useEffect` + `fetch('/api/frontend-data')` on mount.
 
-### 1b) Tools Category page (`/tools/[category]`) — SSR
-Server-side rendered for SEO.
-
-Top area:
-- Back link: "← All Tools" → `/tools`
-- H1: "<Category> Tools"
-
-Table: same structure as Tools List, pre-filtered server-side to the given category.
+Loading state: "Loading tools..." in table body while data is loading.
 
 Category slug format: `category.toLowerCase().replace(/\//g, '-').replace(/\s+/g, '-')`
 
 Example routes:
-- `/tools/captions`
-- `/tools/ai-video-generation`
-- `/tools/editing-effects`
+- `/tools` — all tools
+- `/tools/captions` — Captions tools
+- `/tools/ai-video-generation` — AI Video Generation tools
+- `/tools/editing-effects` — Editing/Effects tools
 
-### 2) Deals List page (`/deals`)
-Client component with interactive search, filters, and sorting.
+### 2) Deals List page (`/deals` and `/deals/<slug>`)
+**Single client component** handling both "All Deals" and category-filtered views via Next.js optional catch-all route `[[...category]]`.
+
+Same pattern as Tools List:
+- Category slug in URL pre-selects category and filters data
+- Title: "All Deals" or "{Category} Deals"
+- All filters (search, category dropdown, offer type dropdown) and sorting remain functional
 
 Top area:
-- H1: "All Deals"
+- H1: dynamic ("All Deals" or "{Category} Deals")
 - Filters row:
-  - Search input "Search deals…" (`rounded`)
-  - Category dropdown (`rounded`) — **navigates** to `/deals/<slug>` on selection
+  - Search input "Search deals..." (`rounded`)
+  - Category dropdown (`rounded`) — updates URL to `/deals/<slug>` on selection
   - Offer type dropdown (`rounded`)
 - Sort: clickable column headers (Tool, Offer, Last seen) with sort indicator icons
 
-Deals table (desktop):
-- Tool (logo `rounded` + name)
-- Offer
-- Code (badge `rounded` + Copy button; or "No code")
-- Last seen
-- Receipt (timestamp link with external-link icon)
-- **Claim Deal** column (see below)
+Deals table columns:
+- Tool (logo `rounded` + name) — always visible
+- Offer — `hidden sm:table-cell`
+- Code (badge `rounded` + Copy button; "Link deal" badge; or "No code") — always visible
+- Last seen — `hidden md:table-cell`
+- Receipt (timestamp link with external-link icon) — `hidden md:table-cell`
+- **Claim** column — always visible (see below)
+- **Ellipsis (more)** — `sm:hidden` (mobile only, opens bottom sheet)
 
-**Claim Deal column behavior:**
+**Claim column behavior (desktop):**
 - Fixed-width cell (`w-[100px]`) to prevent layout shift
 - Default state: subtle external-link icon (gray)
 - **Row hover**: icon fades out, blue "Claim Deal" button fades in via opacity transition
-- Uses `opacity-0 → opacity-100` with `transition-opacity` (NOT `display: none → block`, which causes table jump)
+- Uses `opacity-0 -> opacity-100` with `transition-opacity` (NOT `display: none -> block`, which causes table jump)
 - Links to `deal.link_url` or falls back to `deal.receipt_url`
+
+**Claim column behavior (mobile):**
+- Just a blue ExternalLink icon linking to the claim URL
+
+**"Link deal" badge:**
+- When a deal has `offer_type === 'Link'` but no promo code, show `<Badge variant="neutral" size="sm">Link deal</Badge>` in the Code column
 
 **Copy Code behavior:**
 - Click code badge to copy to clipboard via `navigator.clipboard.writeText()`
 - Copy icon appears on hover next to badge
 - After copy: green check icon replaces copy icon for 2 seconds
 
-Mobile:
-- Stack items with Code+Copy, Receipt link.
-- Some columns hidden at smaller breakpoints.
+**Mobile columns visible: Tool, Code, Claim, Ellipsis** (4 columns).
+**Mobile Ellipsis**: opens `DealBottomSheet` with full deal details.
 
-### 2b) Deals Category page (`/deals/[category]`) — SSR
-Server-side rendered for SEO.
+"Showing N of M deals" counter below filters.
 
-Top area:
-- Back link: "← All Deals" → `/deals`
-- H1: "Deals in <Category>"
+Data fetching: `useEffect` + `fetch('/api/frontend-data')` on mount.
 
-Table: same structure as Deals List, pre-filtered server-side. Claim Deal button always visible (no hover toggle needed on SSR page).
+Loading state: "Loading deals..." in table body while data is loading.
 
 ### 3) Tool Details page (`/tool/[id]`)
+Server component shell using `getAppData()`, with client tabs.
+
 Top header section:
 - Left: logo (`rounded`, larger), tool name, 1-line description.
 - Meta line:
   - category badges (`rounded`)
   - pricing tier
   - platform(s) (optional)
-  - "X videos indexed"
+  - "X reviews" (actual review count, not `review_sources_count`)
   - "Last seen <date>"
-- Right: Primary CTA "Visit <tool name> ↗" (clean button, consistent height, `rounded`).
+- Right: Primary CTA "Go to official site" with ExternalLink icon (clean button, consistent height, `rounded`).
+- Below CTA: "Open deals tab" link (if tool has deals).
 
-Tabs (using accessible Radix UI Tabs):
+Tabs (using accessible Radix UI Tabs, client component: `ToolDetailTabs`):
 - Reviews(n) (default)
 - Deals(n)
+- Uses `useSearchParams()` to read `?tab=deals` param and set correct default tab
+- Wrapped in `<Suspense>` boundary (required for `useSearchParams()`)
 
 #### 3A) Reviews tab (client component: `ReviewsSection`)
 Filters:
@@ -220,14 +239,14 @@ Filters:
 - Tag dropdown (`rounded`)
 - Channel/creator dropdown (`rounded`)
 - Sort dropdown (`rounded`): Most recent / Oldest
-- "Search within snippets…" full-width search input (`rounded`)
+- "Search within snippets..." full-width search input (`rounded`)
 
 Review cards (`rounded` border):
 - Badges row: sentiment badge (color-coded: green/Pro, red/Con, neutral/gray) + topic badges
 - Snippet text (quote)
 - Footer: channel + date
 - Actions (right):
-  - Receipt link "Receipt (5:42) ↗" with external-link icon
+  - Receipt link "Receipt (5:42)" with external-link icon
   - Tiny "Report" link/icon
 
 "Showing N of M reviews" counter at bottom.
@@ -236,11 +255,12 @@ Empty state: "No reviews match your filters."
 
 #### 3B) Deals tab (client component: `DealsTable`)
 Tool-specific deals table:
-- Offer
-- Code (badge `rounded` + Copy / "No code")
-- Last seen
-- Receipt link with Report button
-- **Claim Deal** column (same fixed-width hover pattern as Deals List page)
+- Offer — always visible
+- Code (badge `rounded` + Copy / "Link deal" / "No code") — always visible
+- Last seen — `hidden md:table-cell`
+- Receipt link with Report button — `hidden md:table-cell`
+- **Claim** column (same fixed-width hover pattern as Deals List page) — always visible
+- **Ellipsis (more)** — `sm:hidden` (mobile only, opens bottom sheet)
 
 ### 4) Methodology page (`/methodology`) — Static
 Sections:
@@ -250,8 +270,31 @@ Sections:
 - Limitations
 - Report Issues
 
+## Mobile bottom sheet (`DealBottomSheet`)
+Triggered by tapping the ellipsis (...) icon on deal table rows on mobile.
+
+**Structure:**
+- Fixed bottom panel with slide-up animation (`translate-y-full -> translate-y-0`, 200ms `ease-out`)
+- Semi-transparent black backdrop (click to close)
+- Rounded top corners (`rounded-t-2xl`)
+- Drag handle bar at top (gray pill)
+- Close (X) button in header
+
+**Content sections:**
+- **Header**: Tool logo (`rounded`) + tool name + pricing tier
+- **Offer**: Full offer text
+- **Type + Code row**: Offer type label + Code badge with copy (or "Link deal" badge / "No code")
+- **Last seen + Receipt row**: Date + receipt timestamp link
+- **CTA**: Full-width "Claim Deal" button (`blue-600`, `rounded`) with ExternalLink icon
+- **Bottom spacer**: `<div className="h-6 pb-safe" />` for iOS safe area
+
+**Behaviors:**
+- Body scroll is locked while sheet is open (`document.body.style.overflow = 'hidden'`)
+- Copy code works inside the bottom sheet (same pattern as table)
+- Close triggers reverse animation, then unmounts after 200ms
+
 ## States, loading, and empty cases
-- Skeleton loading for tables and review cards.
+- **Loading state**: "Loading tools..." / "Loading deals..." message in table body (via `isLoading` state)
 - Empty state with "No [items] found matching your filters." message.
 - If receipt missing: show "Receipt unavailable" + allow report.
 - Copy action: shows green check icon for 2 seconds after copy.
@@ -264,3 +307,19 @@ Sections:
 - **External links**: always show external-link icon.
 - **Reporting**: always a small modal, consistent fields.
 - **Tables**: no layout shift on hover interactions (use fixed widths + opacity transitions).
+
+## Responsive breakpoints summary
+| Column | Home tools | Home deals | Tools page | Deals page | Deals (tool detail) |
+|--------|-----------|------------|-----------|------------|-------------------|
+| Tool | always | always | always | always | - |
+| Description | `hidden sm:block` (in tool cell) | - | `hidden sm:block` (in tool cell) | - | - |
+| Category | `hidden md` | - | `hidden md` | - | - |
+| Pricing | `hidden sm` | - | `hidden sm` | - | - |
+| Reviews | always | - | always | - | - |
+| Deals badge | always | - | always | - | - |
+| Offer | - | `hidden sm` | - | `hidden sm` | always |
+| Code | - | always | - | always | always |
+| Last seen | - | `hidden md` | - | `hidden md` | `hidden md` |
+| Receipt | - | `hidden md` | - | `hidden md` | `hidden md` |
+| Claim | - | always | - | always | always |
+| Ellipsis | - | `sm:hidden` | - | `sm:hidden` | `sm:hidden` |
