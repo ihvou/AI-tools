@@ -10,9 +10,10 @@ interface DealBottomSheetProps {
   deal: Deal;
   tool: Tool;
   onClose: () => void;
+  onReport?: (dealId: string) => void;
 }
 
-export function DealBottomSheet({ deal, tool, onClose }: DealBottomSheetProps) {
+export function DealBottomSheet({ deal, tool, onClose, onReport }: DealBottomSheetProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -149,6 +150,20 @@ export function DealBottomSheet({ deal, tool, onClose }: DealBottomSheetProps) {
                 </a>
               </div>
             </div>
+            {onReport && (
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Report</label>
+                <div className="mt-1">
+                  <button
+                    type="button"
+                    onClick={() => onReport(deal.deal_id)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Report issue
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

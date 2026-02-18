@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { ExternalLink, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { DealBottomSheet } from '@/components/features/DealBottomSheet';
+import { ReportIssueModal } from '@/components/features/ReportIssueModal';
 import type { Deal, Tool } from '@/lib/types';
 
 interface DealsPreviewTableProps {
@@ -15,6 +16,7 @@ interface DealsPreviewTableProps {
 
 export function DealsPreviewTable({ deals, tools }: DealsPreviewTableProps) {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [reportDealId, setReportDealId] = useState<string | null>(null);
 
   return (
     <>
@@ -80,14 +82,23 @@ export function DealsPreviewTable({ deals, tools }: DealsPreviewTableProps) {
                     })}
                   </td>
                   <td className="py-4 pl-4 hidden md:table-cell">
-                    <a
-                      href={deal.receipt_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      {deal.timestamp} ↗
-                    </a>
+                    <div className="flex items-center gap-4">
+                      <a
+                        href={deal.receipt_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        {deal.timestamp} ↗
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setReportDealId(deal.deal_id)}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        Report
+                      </button>
+                    </div>
                   </td>
                   <td className="py-4 pl-4">
                     {/* Desktop: link icon */}
@@ -121,9 +132,17 @@ export function DealsPreviewTable({ deals, tools }: DealsPreviewTableProps) {
         <DealBottomSheet
           deal={selectedDeal}
           tool={tools.find((t) => t.tool_id === selectedDeal.tool_id)!}
+          onReport={setReportDealId}
           onClose={() => setSelectedDeal(null)}
         />
       )}
+
+      <ReportIssueModal
+        reportType="deal"
+        entityId={reportDealId || ''}
+        isOpen={Boolean(reportDealId)}
+        onClose={() => setReportDealId(null)}
+      />
     </>
   );
 }

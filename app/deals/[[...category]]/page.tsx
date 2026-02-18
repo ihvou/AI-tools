@@ -8,6 +8,7 @@ import { Search, ChevronDown, ArrowUpDown, ExternalLink, Copy, Check, MoreHorizo
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
 import { DealBottomSheet } from '@/components/features/DealBottomSheet';
+import { ReportIssueModal } from '@/components/features/ReportIssueModal';
 import type { Category, Deal, Tool } from '@/lib/types';
 
 type SortField = 'tool' | 'offer' | 'last_seen';
@@ -36,6 +37,7 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [copiedDealId, setCopiedDealId] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [reportDealId, setReportDealId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -283,9 +285,18 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
                           {new Date(deal.last_seen_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </td>
                         <td className="py-4 px-4 hidden md:table-cell">
-                          <a href={deal.receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-700">
-                            {deal.timestamp} ↗
-                          </a>
+                          <div className="flex items-center gap-4">
+                            <a href={deal.receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-700">
+                              {deal.timestamp} ↗
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => setReportDealId(deal.deal_id)}
+                              className="text-sm text-gray-500 hover:text-gray-700"
+                            >
+                              Report
+                            </button>
+                          </div>
                         </td>
                         <td className="py-4 pl-4 w-[100px]">
                           <a href={claimDealUrl} target="_blank" rel="noopener noreferrer" className="relative items-center justify-center w-[88px] h-8 hidden sm:inline-flex">
@@ -317,9 +328,17 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
         <DealBottomSheet
           deal={selectedDeal}
           tool={toolsById.get(selectedDeal.tool_id)!}
+          onReport={setReportDealId}
           onClose={() => setSelectedDeal(null)}
         />
       )}
+
+      <ReportIssueModal
+        reportType="deal"
+        entityId={reportDealId || ''}
+        isOpen={Boolean(reportDealId)}
+        onClose={() => setReportDealId(null)}
+      />
     </div>
   );
 }

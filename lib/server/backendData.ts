@@ -150,6 +150,23 @@ function toTimestamp(seconds: number | null | undefined): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function toFaviconUrl(websiteUrl: string): string {
+  try {
+    const host = new URL(websiteUrl).hostname.replace(/^www\./, '');
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
+  } catch {
+    return 'https://www.google.com/s2/favicons?domain=example.com&sz=128';
+  }
+}
+
+function resolveToolLogoUrl(logoUrl: string, websiteUrl: string): string {
+  // Clearbit logos are frequently unavailable/blocked; use a stable favicon fallback.
+  if (logoUrl.includes('logo.clearbit.com')) {
+    return toFaviconUrl(websiteUrl);
+  }
+  return logoUrl;
+}
+
 function mapTools(rows: ToolRow[]): { tools: Tool[]; idToSlug: Map<string, string>; categories: Category[] } {
   const categorySet = new Set<Category>();
   const idToSlug = new Map<string, string>();
@@ -165,7 +182,7 @@ function mapTools(rows: ToolRow[]): { tools: Tool[]; idToSlug: Map<string, strin
     const tool: Tool = {
       tool_id: row.slug,
       name: row.name,
-      logo_url: row.logo_url,
+      logo_url: resolveToolLogoUrl(row.logo_url, row.website_url),
       website_url: row.website_url,
       short_tagline: row.short_tagline,
       categories,

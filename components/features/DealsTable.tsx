@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ExternalLink, Copy, Check, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { DealBottomSheet } from '@/components/features/DealBottomSheet';
+import { ReportIssueModal } from '@/components/features/ReportIssueModal';
 import type { Deal, Tool } from '@/lib/types';
 
 interface DealsTableProps {
@@ -14,6 +15,7 @@ interface DealsTableProps {
 export function DealsTable({ deals, tools }: DealsTableProps) {
   const [copiedDealId, setCopiedDealId] = useState<string | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [reportDealId, setReportDealId] = useState<string | null>(null);
 
   function handleCopyCode(dealId: string, code: string) {
     navigator.clipboard.writeText(code);
@@ -91,7 +93,11 @@ export function DealsTable({ deals, tools }: DealsTableProps) {
                       >
                         {deal.timestamp} <ExternalLink size={14} />
                       </a>
-                      <button className="text-sm text-gray-500 hover:text-gray-700">
+                      <button
+                        type="button"
+                        onClick={() => setReportDealId(deal.deal_id)}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
                         Report
                       </button>
                     </div>
@@ -139,9 +145,17 @@ export function DealsTable({ deals, tools }: DealsTableProps) {
         <DealBottomSheet
           deal={selectedDeal}
           tool={tools.find((t) => t.tool_id === selectedDeal.tool_id)!}
+          onReport={setReportDealId}
           onClose={() => setSelectedDeal(null)}
         />
       )}
+
+      <ReportIssueModal
+        reportType="deal"
+        entityId={reportDealId || ''}
+        isOpen={Boolean(reportDealId)}
+        onClose={() => setReportDealId(null)}
+      />
     </>
   );
 }

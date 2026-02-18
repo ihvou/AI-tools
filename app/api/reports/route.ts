@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createReport } from '@/lib/server/backendData';
 
+export const dynamic = 'force-dynamic';
+
 type ReportBody = {
   reportType?: 'review' | 'deal';
   entityId?: string;

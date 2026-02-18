@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Search, ChevronDown, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { ReportIssueModal } from '@/components/features/ReportIssueModal';
 import type { ReviewEvidence, Sentiment, ReviewTag } from '@/lib/types';
 
 interface ReviewsSectionProps {
@@ -17,6 +18,7 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [sortOption, setSortOption] = useState<SortOption>('most_recent');
   const [searchQuery, setSearchQuery] = useState('');
+  const [reportReviewId, setReportReviewId] = useState<string | null>(null);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -212,8 +214,12 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
                   >
                     Receipt ({review.timestamp}) <ExternalLink size={14} />
                   </a>
-                  <button className="text-gray-500 hover:text-gray-700 flex items-center gap-1">
-                    ⊘ Report
+                  <button
+                    type="button"
+                    onClick={() => setReportReviewId(review.review_id)}
+                    className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                  >
+                    Report
                   </button>
                 </div>
               </div>
@@ -225,6 +231,13 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
           </div>
         </div>
       )}
+
+      <ReportIssueModal
+        reportType="review"
+        entityId={reportReviewId || ''}
+        isOpen={Boolean(reportReviewId)}
+        onClose={() => setReportReviewId(null)}
+      />
     </div>
   );
 }
