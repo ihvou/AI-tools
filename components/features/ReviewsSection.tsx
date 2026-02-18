@@ -92,13 +92,13 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
       </div>
 
       {/* Filters Row */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:items-center">
         {/* Tag Filter */}
-        <div className="relative">
+        <div className="relative min-w-0">
           <select
             value={tagFilter}
             onChange={(e) => setTagFilter(e.target.value)}
-            className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+            className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
           >
             <option value="all">Add tag filter...</option>
             {allTags.map((tag) => (
@@ -111,11 +111,11 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
         </div>
 
         {/* Channel Filter */}
-        <div className="relative">
+        <div className="hidden sm:block relative min-w-0">
           <select
             value={channelFilter}
             onChange={(e) => setChannelFilter(e.target.value)}
-            className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+            className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
           >
             <option value="all">All reviews</option>
             {allChannels.map((ch) => (
@@ -128,16 +128,16 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
         </div>
 
         {/* Spacer */}
-        <div className="flex-1" />
+        <div className="hidden sm:block sm:flex-1" />
 
         {/* Sort */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Sort:</span>
-          <div className="relative">
+        <div className="flex items-center justify-end gap-2">
+          <span className="hidden text-sm text-gray-500 sm:inline">Sort:</span>
+          <div className="relative min-w-0">
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as SortOption)}
-              className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+              className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
             >
               <option value="most_recent">Most recent</option>
               <option value="oldest">Oldest</option>
@@ -148,7 +148,7 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
       </div>
 
       {/* Search */}
-      <div className="relative mb-6">
+      <div className="relative mb-4 sm:mb-6">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"

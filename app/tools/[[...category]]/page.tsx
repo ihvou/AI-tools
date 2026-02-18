@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Search, ChevronDown, ArrowUpDown, Check as CheckIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Container } from '@/components/ui/Container';
-import type { Category, Deal, Tool } from '@/lib/types';
+import type { Category, Deal, ReviewEvidence, Tool } from '@/lib/types';
 
 type SortField = 'name' | 'reviews' | 'last_seen' | 'pricing';
 type SortDirection = 'asc' | 'desc';
@@ -26,6 +26,7 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
 
   const [tools, setTools] = useState<Tool[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [reviews, setReviews] = useState<ReviewEvidence[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -45,11 +46,13 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
         const data = await response.json() as {
           tools: Tool[];
           deals: Deal[];
+          reviews: ReviewEvidence[];
           categories: Category[];
         };
         if (!cancelled) {
           setTools(data.tools || []);
           setDeals(data.deals || []);
+          setReviews(data.reviews || []);
           setCategories(data.categories || []);
         }
       } catch (error) {
@@ -83,6 +86,14 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
     return map;
   }, [deals]);
 
+  const reviewsByToolId = useMemo(() => {
+    const map = new Map<string, number>();
+    reviews.forEach((review) => {
+      map.set(review.tool_id, (map.get(review.tool_id) || 0) + 1);
+    });
+    return map;
+  }, [reviews]);
+
   const filteredAndSortedTools = useMemo(() => {
     let result = [...tools];
 
@@ -115,7 +126,7 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
           cmp = a.name.localeCompare(b.name);
           break;
         case 'reviews':
-          cmp = (a.review_sources_count || 0) - (b.review_sources_count || 0);
+          cmp = (reviewsByToolId.get(a.tool_id) || 0) - (reviewsByToolId.get(b.tool_id) || 0);
           break;
         case 'last_seen':
           cmp = (a.last_seen_review_date || '').localeCompare(b.last_seen_review_date || '');
@@ -128,7 +139,7 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
     });
 
     return result;
-  }, [tools, activeCategory, searchQuery, selectedPricing, hasDealsOnly, dealsByToolId, sortField, sortDirection]);
+  }, [tools, activeCategory, searchQuery, selectedPricing, hasDealsOnly, dealsByToolId, reviewsByToolId, sortField, sortDirection]);
 
   function handleCategoryChange(value: string) {
     if (value === 'all') {
@@ -163,8 +174,8 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
         <div className="py-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle}</h1>
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="relative flex-1">
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:flex sm:flex-row">
+            <div className="relative col-span-2 sm:col-span-1 sm:flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -175,11 +186,11 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
               />
             </div>
 
-            <div className="relative">
+            <div className="relative min-w-0">
               <select
                 value={activeCategory || 'all'}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All categories</option>
                 {categories.map((cat) => (
@@ -191,11 +202,11 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
 
-            <div className="relative">
+            <div className="relative min-w-0">
               <select
                 value={selectedPricing}
                 onChange={(e) => setSelectedPricing(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All pricing</option>
                 {pricingOptions.map((pricing) => (
@@ -207,7 +218,7 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
 
-            <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded bg-white cursor-pointer select-none hover:bg-gray-50 transition-colors">
+            <label className="inline-flex w-full sm:w-auto items-center gap-2 px-3 py-2 text-sm border border-gray-200 rounded bg-white cursor-pointer select-none hover:bg-gray-50 transition-colors">
               <span className={`flex items-center justify-center w-4 h-4 rounded border transition-colors ${hasDealsOnly ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
                 {hasDealsOnly && <CheckIcon size={12} className="text-white" />}
               </span>
@@ -277,6 +288,7 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
                 ) : (
                   filteredAndSortedTools.map((tool) => {
                     const toolDealsCount = dealsByToolId.get(tool.tool_id) || 0;
+                    const toolReviewsCount = reviewsByToolId.get(tool.tool_id) || 0;
                     const hasDeals = toolDealsCount > 0;
 
                     return (
@@ -303,7 +315,7 @@ export default function ToolsPage({ params }: { params: { category?: string[] } 
                           </div>
                         </td>
                         <td className="py-4 px-4 text-sm text-gray-600 hidden sm:table-cell">{tool.pricing_model}</td>
-                        <td className="py-4 px-4 text-sm text-gray-600">{tool.review_sources_count || 0}</td>
+                        <td className="py-4 px-4 text-sm text-gray-600">{toolReviewsCount}</td>
                         <td className="py-4 px-4 text-sm text-gray-600 hidden lg:table-cell">
                           {tool.last_seen_review_date
                             ? new Date(tool.last_seen_review_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

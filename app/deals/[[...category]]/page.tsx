@@ -170,8 +170,8 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
         <div className="py-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">{pageTitle}</h1>
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="relative flex-1">
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:flex sm:flex-row">
+            <div className="relative col-span-2 sm:col-span-1 sm:flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -182,11 +182,11 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
               />
             </div>
 
-            <div className="relative">
+            <div className="relative min-w-0">
               <select
                 value={activeCategory || 'all'}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All categories</option>
                 {categories.map((cat) => (
@@ -196,11 +196,11 @@ export default function DealsPage({ params }: { params: { category?: string[] } 
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
 
-            <div className="relative">
+            <div className="relative min-w-0">
               <select
                 value={selectedOfferType}
                 onChange={(e) => setSelectedOfferType(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
+                className="w-full sm:w-auto appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white cursor-pointer"
               >
                 <option value="all">All offer types</option>
                 {offerTypeOptions.map((type) => (
